@@ -18,6 +18,7 @@ class PurchaseDetail extends Model
         'TaxNet' => 'double',
         'discount' => 'double',
         'quantity' => 'double',
+        'received_quantity' => 'double',
         'purchase_id' => 'integer',
         'purchase_unit_id' => 'integer',
         'product_id' => 'integer',
@@ -32,6 +33,11 @@ class PurchaseDetail extends Model
     public function product()
     {
         return $this->belongsTo('App\Models\Product');
+    }
+
+    public function barcodeScans()
+    {
+        return $this->hasMany(PurchaseBarcodeScan::class);
     }
 
 }

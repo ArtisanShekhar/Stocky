@@ -22,7 +22,7 @@
                 <!-- Name -->
                 <b-col md="6" class="mb-2">
                   <validation-provider
-                    name="Name"
+                    name="Product Name"
                     :rules="{required:true , min:3 , max:55}"
                     v-slot="validationContext"
                   >
@@ -30,7 +30,7 @@
                       <b-form-input
                         :state="getValidationState(validationContext)"
                         aria-describedby="Name-feedback"
-                        label="Name"
+                        label="Product Name"
                         :placeholder="$t('Enter_Name_Product')"
                         v-model="product.name"
                       ></b-form-input>
@@ -88,13 +88,13 @@
                     
                     <b-form-group
                       slot-scope="{ valid, errors }"
-                      :label="$t('CodeProduct') + ' ' + '*'"
+                      :label="$t('Model Name') + ' ' + '*'"
                     >
                       <div class="input-group">
                         <!-- Input group prepend -->
-                        <div class="input-group-prepend">
+                        <!-- <div class="input-group-prepend">
                           <img src="/assets_setup/scan.png" alt="Scan" class="scan-icon" @click="showModal">
-                        </div>
+                        </div> -->
                         <b-form-input
                           :class="{'is-invalid': !!errors.length}"
                           :state="errors[0] ? false : (valid ? true : null)"
@@ -102,16 +102,16 @@
                           type="text"
                           v-model="product.code"
                         ></b-form-input>
-                        <div class="input-group-append">
+                        <!-- <div class="input-group-append">
                           <span class="input-group-text">
                             <a @click="generateNumber()">
                               <i class="i-Bar-Code cursor-pointer"></i>
                             </a>
                           </span>
-                        </div>
+                        </div> -->
                         <b-form-invalid-feedback id="CodeProduct-feedback">{{ errors[0] }}</b-form-invalid-feedback>
                       </div>
-                      <span>{{$t('Scan_your_barcode_and_select_the_correct_symbology_below')}}</span>
+                      <!-- <span>{{$t('Scan_your_barcode_and_select_the_correct_symbology_below')}}</span> -->
                       <b-alert
                         show
                         variant="danger"

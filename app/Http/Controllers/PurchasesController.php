@@ -30,6 +30,7 @@ use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnDetails;
 use App\Models\Provider;
 use App\Models\Purchase;
+use App\Models\PurchaseBarcodeScan;
 use App\Models\PurchaseDetail;
 use App\Models\Role;
 use App\Models\Setting;
@@ -148,15 +149,40 @@ class PurchasesController extends BaseController
             $categories = $Purchase->details->pluck('product.category.name')->unique()->filter()->implode(', ');
             $item['categories'] = $categories ?: '';
 
-            if (PurchaseReturn::where('purchase_id', $Purchase['id'])->where('deleted_at', '=', null)->exists()) {
-                $PurchaseReturn = PurchaseReturn::where('purchase_id', $Purchase['id'])->where('deleted_at', '=', null)->first();
-                $item['purchasereturn_id'] = $PurchaseReturn->id;
-                $item['purchase_has_return'] = 'yes';
-            }else{
-                $item['purchase_has_return'] = 'no';
-            }
+            // Get unique category codes
+            $category_codes = $Purchase->details->pluck('product.category.code')->unique()->filter()->values();
+        $item['category_codes'] = $category_codes;
 
-            $data[] = $item;
+        // Check if any detail has category code 123
+        $item['has_cat_123'] = $Purchase->details->pluck('product.category.code')->contains('123');
+
+        // Calculate total received quantity based on scans
+        $total_scans = PurchaseBarcodeScan::whereIn('purchase_detail_id', $Purchase->details->pluck('id'))->count();
+        if ($item['has_cat_123']) {
+            $item['total_received_quantity'] = floor($total_scans / 2);
+        } else {
+            $item['total_received_quantity'] = $total_scans;
+        }
+
+        // Include details for scanning
+        $item['details'] = $Purchase->details->map(function($d) {
+            $name = $d->product_variant_id ? '[' . $d->productVariant->name . '] ' . $d->product->name : $d->product->name;
+            return [
+                'id' => $d->id,
+                'name' => $name,
+                'code' => $d->product->code
+            ];
+        });
+
+        if (PurchaseReturn::where('purchase_id', $Purchase['id'])->where('deleted_at', '=', null)->exists()) {
+            $PurchaseReturn = PurchaseReturn::where('purchase_id', $Purchase['id'])->where('deleted_at', '=', null)->first();
+            $item['purchasereturn_id'] = $PurchaseReturn->id;
+            $item['purchase_has_return'] = 'yes';
+        }else{
+            $item['purchase_has_return'] = 'no';
+        }
+
+        $data[] = $item;
         }
 
         // echo'<pre>';
@@ -234,39 +260,39 @@ class PurchasesController extends BaseController
                     'imei_number' => $value['imei_number'],
                 ];
 
-                if ($order->statut == "received") {
-                    if ($value['product_variant_id'] !== null) {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->where('product_variant_id', $value['product_variant_id'])
-                            ->first();
+                // if ($order->statut == "received") {
+                //     if ($value['product_variant_id'] !== null) {
+                //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                //             ->where('warehouse_id', $order->warehouse_id)
+                //             ->where('product_id', $value['product_id'])
+                //             ->where('product_variant_id', $value['product_variant_id'])
+                //             ->first();
 
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte += $value['quantity'] / $unit->operator_value;
-                            } else {
-                                $product_warehouse->qte += $value['quantity'] * $unit->operator_value;
-                            }
-                            $product_warehouse->save();
-                        }
+                //         if ($unit && $product_warehouse) {
+                //             if ($unit->operator == '/') {
+                //                 $product_warehouse->qte += $value['quantity'] / $unit->operator_value;
+                //             } else {
+                //                 $product_warehouse->qte += $value['quantity'] * $unit->operator_value;
+                //             }
+                //             $product_warehouse->save();
+                //         }
 
-                    } else {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->first();
+                //     } else {
+                //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                //             ->where('warehouse_id', $order->warehouse_id)
+                //             ->where('product_id', $value['product_id'])
+                //             ->first();
 
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte += $value['quantity'] / $unit->operator_value;
-                            } else {
-                                $product_warehouse->qte += $value['quantity'] * $unit->operator_value;
-                            }
-                            $product_warehouse->save();
-                        }
-                    }
-                }
+                //         if ($unit && $product_warehouse) {
+                //             if ($unit->operator == '/') {
+                //                 $product_warehouse->qte += $value['quantity'] / $unit->operator_value;
+                //             } else {
+                //                 $product_warehouse->qte += $value['quantity'] * $unit->operator_value;
+                //             }
+                //             $product_warehouse->save();
+                //         }
+                //     }
+                // }
             }
             PurchaseDetail::insert($orderDetails);
         }, 10);
@@ -378,43 +404,43 @@ class PurchasesController extends BaseController
                     if($prod_detail['no_unit'] !== 0){
                         $unit_prod = Unit::where('id', $prod_detail['purchase_unit_id'])->first();
 
-                        if ($request['statut'] == "received") {
+                        // if ($request['statut'] == "received") {
 
-                            if ($prod_detail['product_variant_id'] !== null) {
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $request->warehouse_id)
-                                    ->where('product_id', $prod_detail['product_id'])
-                                    ->where('product_variant_id', $prod_detail['product_variant_id'])
-                                    ->first();
+                        //     if ($prod_detail['product_variant_id'] !== null) {
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        //             ->where('warehouse_id', $request->warehouse_id)
+                        //             ->where('product_id', $prod_detail['product_id'])
+                        //             ->where('product_variant_id', $prod_detail['product_variant_id'])
+                        //             ->first();
 
-                                if ($unit_prod && $product_warehouse) {
-                                    if ($unit_prod->operator == '/') {
-                                        $product_warehouse->qte += $prod_detail['quantity'] / $unit_prod->operator_value;
-                                    } else {
-                                        $product_warehouse->qte += $prod_detail['quantity'] * $unit_prod->operator_value;
-                                    }
+                        //         if ($unit_prod && $product_warehouse) {
+                        //             if ($unit_prod->operator == '/') {
+                        //                 $product_warehouse->qte += $prod_detail['quantity'] / $unit_prod->operator_value;
+                        //             } else {
+                        //                 $product_warehouse->qte += $prod_detail['quantity'] * $unit_prod->operator_value;
+                        //             }
 
-                                    $product_warehouse->save();
-                                }
+                        //             $product_warehouse->save();
+                        //         }
 
-                            } else {
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $request->warehouse_id)
-                                    ->where('product_id', $prod_detail['product_id'])
-                                    ->first();
+                        //     } else {
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        //             ->where('warehouse_id', $request->warehouse_id)
+                        //             ->where('product_id', $prod_detail['product_id'])
+                        //             ->first();
 
-                                if ($unit_prod && $product_warehouse) {
-                                    if ($unit_prod->operator == '/') {
-                                        $product_warehouse->qte += $prod_detail['quantity'] / $unit_prod->operator_value;
-                                    } else {
-                                        $product_warehouse->qte += $prod_detail['quantity'] * $unit_prod->operator_value;
-                                    }
+                        //         if ($unit_prod && $product_warehouse) {
+                        //             if ($unit_prod->operator == '/') {
+                        //                 $product_warehouse->qte += $prod_detail['quantity'] / $unit_prod->operator_value;
+                        //             } else {
+                        //                 $product_warehouse->qte += $prod_detail['quantity'] * $unit_prod->operator_value;
+                        //             }
 
-                                    $product_warehouse->save();
-                                }
-                            }
+                        //             $product_warehouse->save();
+                        //         }
+                        //     }
 
-                        }
+                        // }
 
                         $orderDetails['purchase_id'] = $id;
                         $orderDetails['cost'] = $prod_detail['Unit_cost'];
@@ -740,6 +766,7 @@ class PurchasesController extends BaseController
             }
             
             $data['quantity'] = $detail->quantity;
+            $data['received_quantity'] = $detail->received_quantity;
             $data['total'] = $detail->total;
             $data['cost'] = $detail->cost;
             $data['unit_purchase'] = $unit->ShortName;
@@ -1737,7 +1764,254 @@ class PurchasesController extends BaseController
            }
        }
 
+    //---------------- Scan Barcode for Purchase Detail ----------------\\
 
+    public function scanBarcode(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'update', Purchase::class);
+
+        $request->validate([
+            'purchase_id' => 'required|exists:purchase_details,id',
+            'barcode' => 'required|string',
+            'type' => 'nullable|in:indoor,outdoor',
+        ]);
+
+        $detail = PurchaseDetail::with('product.category')->findOrFail($request->purchase_id);
+
+        // Load purchase FIRST (was used earlier incorrectly)
+        $purchase = Purchase::findOrFail($detail->purchase_id);
+
+        $product = Product::where('code', $detail->product->code)->first();
+        if (!$product) {
+            return response()->json(['success' => false, 'message' => 'Product code not found.'], 404);
+        }
+        if (strpos($request->barcode, $product->code) !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid barcode. It does not match product code series.'
+                ], 400);
+            }
+
+        // Warehouse product (safe create if missing)
+        $warehouseProduct = product_warehouse::firstOrCreate([
+            'product_id' => $product->id,
+            'warehouse_id' => $purchase->warehouse_id,
+        ], [
+            'qte' => 0,
+            'manage_stock' => 1
+        ]);
+
+        $categoryCode = $detail->product->category->code ?? null;
+
+        // Purchase status check
+        if (!in_array($purchase->statut, ['received'])) {
+            return response()->json(['success' => false, 'message' => 'Purchase must be ordered or received to scan barcodes.'], 400);
+        }
+
+        // Prevent duplicate barcode
+        $existingBarcode = PurchaseBarcodeScan::where('barcode', $request->barcode)
+            ->where('purchase_detail_id', $detail->id)
+            ->exists();
+
+        if ($existingBarcode) {
+            return response()->json(['success' => false, 'message' => 'This barcode has already been scanned.'], 400);
+        }
+
+        // ---------- Category 123 (2 scans = 1 qty) ----------
+        if ($categoryCode == '123') {
+
+            if (!$request->type) {
+                return response()->json(['success' => false, 'message' => 'Type (indoor/outdoor) is required for this category.'], 400);
+            }
+
+            // Save scan FIRST
+            PurchaseBarcodeScan::create([
+                'purchase_detail_id' => $detail->id,
+                'barcode' => $request->barcode,
+                'type' => $request->type,
+            ]);
+
+            // Now count total scans
+            $totalScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->count();
+
+            // Every 2 scans = 1 unit
+            $qty = floor($totalScans / 2);
+        }
+
+        // ---------- Normal product ----------
+        else {
+
+            $existingScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->count();
+            if ($existingScans >= $detail->quantity) {
+                return response()->json(['success' => false, 'message' => 'Cannot scan more barcodes than ordered quantity.'], 400);
+            }
+
+            // Save scan first
+            PurchaseBarcodeScan::create([
+                'purchase_detail_id' => $detail->id,
+                'barcode' => $request->barcode,
+                'type' => null,
+            ]);
+
+            // Recount after insert
+            $totalScans = $existingScans + 1;
+            $qty = $totalScans;
+        }
+
+        // Update warehouse quantity
+        $warehouseProduct->qte = $qty;
+        $warehouseProduct->save();
+
+        return response()->json(['success' => true, 'message' => 'Barcode scanned successfully.', 'received_quantity' => $qty]);
+    }
+
+
+    //---------------- Bulk Scan Barcodes for Purchase Detail ----------------\\
+
+    public function bulkScanBarcodes(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'update', Purchase::class);
+
+        $request->validate([
+            'purchase_detail_id' => 'required|exists:purchase_details,id',
+            'barcodes' => 'required|array',
+            'barcodes.*.barcode' => 'required|string',
+            'barcodes.*.type' => 'nullable|in:indoor,outdoor',
+        ]);
+
+        $detail = PurchaseDetail::with('product.category')->findOrFail($request->purchase_detail_id);
+        $categoryCode = $detail->product->category->code ?? null;
+
+        // Check if purchase is in received status or ordered
+        $purchase = Purchase::findOrFail($detail->purchase_id);
+        if (!in_array($purchase->statut, ['ordered', 'received'])) {
+            return response()->json(['success' => false, 'message' => 'Purchase must be ordered or received to scan barcodes.'], 400);
+        }
+
+        $scannedBarcodes = [];
+        $errors = [];
+
+        if ($categoryCode == '123') {
+            // Requires both indoor and outdoor scans per unit
+            // Get existing counts
+            $indoorScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)
+                ->where('type', 'indoor')
+                ->count();
+            $outdoorScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)
+                ->where('type', 'outdoor')
+                ->count();
+
+            $maxUnits = floor($detail->quantity);
+
+            foreach ($request->barcodes as $barcodeData) {
+                $barcode = $barcodeData['barcode'];
+                $type = $barcodeData['type'] ?? null;
+
+                if (!$type) {
+                    $errors[] = "Type (indoor/outdoor) is required for barcode $barcode.";
+                    continue;
+                }
+
+                $existingBarcode = PurchaseBarcodeScan::where('barcode', $barcode)
+                    ->where('purchase_detail_id', $detail->id)
+                    ->exists();
+
+                if ($existingBarcode) {
+                    $errors[] = "Barcode $barcode has already been scanned.";
+                    continue;
+                }
+
+                if ($type == 'indoor') {
+                    if ($indoorScans >= $maxUnits) {
+                        $errors[] = "Cannot scan more indoor barcodes than ordered quantity for $barcode.";
+                        continue;
+                    }
+                    $indoorScans++;
+                } else {
+                    if ($outdoorScans >= $maxUnits) {
+                        $errors[] = "Cannot scan more outdoor barcodes than ordered quantity for $barcode.";
+                        continue;
+                    }
+                    $outdoorScans++;
+                }
+
+                // Save the scan
+                PurchaseBarcodeScan::create([
+                    'purchase_detail_id' => $detail->id,
+                    'barcode' => $barcode,
+                    'type' => $type,
+                ]);
+
+                $scannedBarcodes[] = ['barcode' => $barcode, 'type' => $type];
+            }
+
+            // Recalculate received_quantity: min of indoor and outdoor scans
+            $detail->received_quantity = min($indoorScans, $outdoorScans);
+            $detail->save();
+
+        } else {
+            // Normal scan: each scan increments by 1
+            $existingScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->count();
+
+            foreach ($request->barcodes as $barcodeData) {
+                $barcode = $barcodeData['barcode'];
+
+                $existingBarcode = PurchaseBarcodeScan::where('barcode', $barcode)
+                    ->where('purchase_detail_id', $detail->id)
+                    ->exists();
+
+                if ($existingBarcode) {
+                    $errors[] = "Barcode $barcode has already been scanned.";
+                    continue;
+                }
+
+                if ($existingScans >= $detail->quantity) {
+                    $errors[] = "Cannot scan more barcodes than ordered quantity for $barcode.";
+                    continue;
+                }
+
+                // Save the scan
+                PurchaseBarcodeScan::create([
+                    'purchase_detail_id' => $detail->id,
+                    'barcode' => $barcode,
+                    'type' => null,
+                ]);
+
+                $existingScans++;
+                $scannedBarcodes[] = ['barcode' => $barcode, 'type' => null];
+            }
+
+            $detail->received_quantity = $existingScans;
+            $detail->save();
+        }
+
+        // Check if all purchase details are fully received
+        $purchase = Purchase::with('details')->findOrFail($detail->purchase_id);
+        $allReceived = $purchase->details->every(function ($d) {
+            return $d->received_quantity >= $d->quantity;
+        });
+        if ($allReceived && $purchase->statut !== 'received') {
+            $purchase->statut = 'received';
+            $purchase->save();
+        }
+
+        if (!empty($errors)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Some barcodes could not be scanned.',
+                'errors' => $errors,
+                'scanned' => $scannedBarcodes,
+                'received_quantity' => $detail->received_quantity
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barcodes scanned successfully.',
+            'scanned' => $scannedBarcodes,
+            'received_quantity' => $detail->received_quantity
+        ]);
+    }
 
 
 }

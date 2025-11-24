@@ -30,7 +30,7 @@
                   <th>{{product.type_name}}</th>
                 </tr>
                 <tr>
-                  <td>{{$t('CodeProduct')}}</td>
+                  <td>{{$t('Model Name')}}</td>
                   <th>{{product.code}}</th>
                 </tr>
                 <tr>

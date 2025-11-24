@@ -146,6 +146,8 @@
                   {{$t('sms_notification')}}
                 </b-dropdown-item>
 
+
+
                 <b-dropdown-item
                   title="Delete"
                   v-if="currentUserPermissions.includes('Purchases_delete')"
@@ -180,7 +182,7 @@
             >{{$t('partial')}}</span>
             <span v-else class="badge badge-outline-warning">{{$t('Unpaid')}}</span>
           </div>
-           <div v-else-if="props.column.field == 'Ref'">
+          <div v-else-if="props.column.field == 'Ref'">
               <router-link
                 :to="'/app/purchases/detail/'+props.row.id"
               >
@@ -188,6 +190,10 @@
               </router-link> <br>
               <small v-if="props.row.purchase_has_return == 'yes'"><i class="text-15 text-danger i-Back"></i></small>
             </div>
+          <div v-else-if="props.column.field == 'received_count'">
+            <span>{{ props.row.total_received_quantity }}</span>
+            <button class="btn btn-sm btn-primary ml-2" @click="Scan_Barcode(props.row)">Scan</button>
+          </div>
         </template>
       </vue-good-table>
     </div>
@@ -243,7 +249,7 @@
                 :placeholder="$t('Choose_Status')"
                 :options="
                       [
-                        {label: 'Received', value: 'received'},
+                        {label: 'Received', value: 'received'}, 
                         {label: 'Pending', value: 'pending'},
                         {label: 'Ordered', value: 'ordered'},
                       ]"
@@ -288,6 +294,7 @@
         </b-row>
       </div>
     </b-sidebar>
+
 
     <!-- Modal Show Payments-->
     <b-modal hide-footer size="lg" id="Show_payment" :title="$t('ShowPayment')">
@@ -361,6 +368,7 @@
         </b-col>
       </b-row>
     </b-modal>
+
 
     <!-- Modal Add Payment-->
     <validation-observer ref="Add_payment">
@@ -511,8 +519,90 @@
         </b-form>
       </b-modal>
     </validation-observer>
-  </div>
-</template>
+
+        <b-modal hide-footer id="purchase_barcode_scanner" size="md" title="Barcode Scanner">
+      <qrcode-scanner
+        :qrbox="250"
+        :fps="10"
+        style="width: 100%; height: calc(100vh - 56px);"
+        @result="onPurchaseScan"
+      />
+    </b-modal>
+    <!-- Modal Scan Barcode -->
+    <validation-observer ref="Scan_Barcode_Form">
+            <b-modal 
+              hide-footer 
+              size="lg" 
+              id="Scan_Barcode_Modal" 
+              :title="$t('Scan Barcode')"
+              no-close-on-backdrop
+              no-close-on-esc
+            >        
+            <b-form @submit.prevent="Submit_Scan_Barcode">
+            <b-row>
+              <!-- Barcode -->
+              <b-col lg="6" md="12" sm="12">
+                <validation-provider name="Barcode" :rules="{ required: true }">
+                <b-form-group :label="$t('Barcode')">
+                  <div class="input-group">
+                    <!-- Scan icon -->
+                    <div class="input-group-prepend">
+                      <img src="/assets_setup/scan.png" 
+                          alt="Scan" 
+                          class="scan-icon" 
+                          @click="openScanModal" 
+                          style="
+                            height: 38px;
+                            width: auto;
+                            padding: 6px;
+                            cursor: pointer;
+                          ">
+                    </div>
+                    <!-- Barcode input -->
+                    <b-form-input 
+                      v-model="scan.barcode" 
+                      :placeholder="$t('Scan Barcode')" readonly
+                      @keyup.enter="Submit_Scan_Barcode"
+                    />
+                  </div>
+                <div v-if="scan_error"
+                    style="background:#ffe5e5;border:1px solid #ffb3b3;color:#d9534f;padding:10px 14px;border-radius:6px;display:flex;align-items:center;font-size:14px;font-weight:500;box-shadow:0 2px 5px rgba(255,0,0,0.1);"
+                    class="mt-2">
+                  <i class="i-Remove text-danger mr-2" style="font-size:18px;"></i>
+                  {{ scan_error }}
+                </div>
+
+                </b-form-group>
+
+                </validation-provider>
+              </b-col>
+
+              <!-- Type for category 123 -->
+              <b-col v-if="scan.category_id === '123'" lg="6" md="12" sm="12">
+                <validation-provider name="Type" :rules="{ required: true }">
+                  <b-form-group :label="$t('Type')">
+                    <b-form-radio-group v-model="scan.type" :checked="'indoor'">
+                      <b-form-radio value="indoor">Indoor</b-form-radio>
+                      <b-form-radio value="outdoor">Outdoor</b-form-radio>
+                    </b-form-radio-group>
+                  </b-form-group>
+                </validation-provider>
+              </b-col>
+              
+              <b-col md="12" class="mt-3">
+                <b-button variant="primary" type="submit" :disabled="scanning">
+                  <i class="i-Yes me-2 font-weight-bold"></i> {{$t('Scan')}}
+                </b-button>
+                <div v-once class="typo__p" v-if="scanning">
+                  <div class="spinner sm spinner-primary mt-3"></div>
+                </div>
+              </b-col>
+            </b-row>
+          </b-form>
+        </b-modal>
+      </validation-observer>
+    </div>
+  </template>
 
 <script>
 import { mapActions, mapGetters } from "vuex";
@@ -580,7 +670,15 @@ export default {
         message: "",
         client_name: "",
         Ref: ""
-      }
+      },
+      scan: {
+        barcode: "",
+        type: "",
+        category_id: null
+      },
+      scan_error: "", 
+      scanning: false,
+
     };
   },
 
@@ -663,11 +761,18 @@ export default {
           thClass: "text-left"
         },
         {
+          label: this.$t("Received count"),
+          field: "received_count",
+          tdClass: "text-left",
+          thClass: "text-left"
+        },
+        {
           label: this.$t("Categories"),
           field: "categories",
           tdClass: "text-left",
           thClass: "text-left"
         },
+
         {
           label: this.$t("Action"),
           field: "actions",
@@ -1453,6 +1558,69 @@ export default {
           // Complete the animation of the  progress bar.
           setTimeout(() => NProgress.done(), 500);
         });
+    },
+
+    //----------------------------------------- Scan Barcode -------------------------------\\
+    Scan_Barcode(row) {
+      this.scan_error = "";  // clear previous error
+
+     const cat = row.category_codes ? row.category_codes[0] : null;
+      this.scan = {
+        barcode: "",
+        type: cat === '123' ? 'indoor' : null,
+        category_id: row.category_codes ? row.category_codes[0] : null
+      };
+      this.purchase_id = row.id;
+      this.$bvModal.show("Scan_Barcode_Modal");
+    },
+
+     openScanModal() {
+      this.$bvModal.show('purchase_barcode_scanner');
+      },
+
+    // When scanned → set barcode
+    onPurchaseScan(decodedText) {
+      this.scan.barcode = decodedText;
+      this.$bvModal.hide('purchase_barcode_scanner');
+      setTimeout(() => {
+        this.Submit_Scan_Barcode();
+      }, 150);
+    },
+
+    //----------------------------------------- Submit Scan Barcode -------------------------------\\
+    async Submit_Scan_Barcode() {
+      this.scan_error = "";
+      const success = await this.$refs.Scan_Barcode_Form.validate();
+      if (!success) {
+        return;
+      }
+      this.scanning = true;
+      NProgress.start();
+      NProgress.set(0.1);
+      try {
+        const response = await axios.post("purchases/scan-barcode", {
+          purchase_id: this.purchase_id,
+          barcode: this.scan.barcode,
+          type: this.scan.type
+        });
+        this.scanning = false;
+        this.makeToast(
+          "success",
+          this.$t("Barcode scanned successfully"),
+          this.$t("Success")
+        );
+        this.Get_Purchases(this.serverParams.page);
+      } catch (error) {
+        this.scanning = false;
+        NProgress.done();
+        const msg =
+          error.message ||                      // when error = {success:false,message:""}
+          error.response?.data?.message ||      // when axios gives response object
+          "Failed to scan barcode";
+        this.scan_error = msg;
+        console.log("Error barcode:", msg);
+        this.makeToast("danger", msg, this.$t("Failed"));
+      }
     }
   },
 
