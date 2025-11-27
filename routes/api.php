@@ -464,6 +464,9 @@ Route::middleware(['auth:api', 'Is_Active'])->group(function () {
     Route::post('purchase_send_whatsapp', 'PurchasesController@purchase_send_whatsapp');
     Route::post('purchases/scan-barcode', 'PurchasesController@scanBarcode');
 
+    Route::post('sales/scan-barcode', 'SalesController@scanBarcode');
+
+
     
     Route::get('get_import_purchases', 'PurchasesController@get_import_purchases');
     Route::post('store_import_purchases', 'PurchasesController@store_import_purchases');

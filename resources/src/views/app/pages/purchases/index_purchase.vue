@@ -520,7 +520,7 @@
       </b-modal>
     </validation-observer>
 
-        <b-modal hide-footer id="purchase_barcode_scanner" size="md" title="Barcode Scanner">
+  <b-modal hide-footer id="purchase_barcode_scanner" size="md" title="Barcode Scanner">
       <qrcode-scanner
         :qrbox="250"
         :fps="10"
@@ -529,78 +529,67 @@
       />
     </b-modal>
     <!-- Modal Scan Barcode -->
-    <validation-observer ref="Scan_Barcode_Form">
-            <b-modal 
-              hide-footer 
-              size="lg" 
-              id="Scan_Barcode_Modal" 
-              :title="$t('Scan Barcode')"
-              no-close-on-backdrop
-              no-close-on-esc
-            >        
-            <b-form @submit.prevent="Submit_Scan_Barcode">
-            <b-row>
-              <!-- Barcode -->
-              <b-col lg="6" md="12" sm="12">
-                <validation-provider name="Barcode" :rules="{ required: true }">
-                <b-form-group :label="$t('Barcode')">
-                  <div class="input-group">
-                    <!-- Scan icon -->
-                    <div class="input-group-prepend">
-                      <img src="/assets_setup/scan.png" 
-                          alt="Scan" 
-                          class="scan-icon" 
-                          @click="openScanModal" 
-                          style="
-                            height: 38px;
-                            width: auto;
-                            padding: 6px;
-                            cursor: pointer;
-                          ">
-                    </div>
-                    <!-- Barcode input -->
-                    <b-form-input 
-                      v-model="scan.barcode" 
-                      :placeholder="$t('Scan Barcode')" readonly
-                      @keyup.enter="Submit_Scan_Barcode"
-                    />
-                  </div>
-                <div v-if="scan_error"
-                    style="background:#ffe5e5;border:1px solid #ffb3b3;color:#d9534f;padding:10px 14px;border-radius:6px;display:flex;align-items:center;font-size:14px;font-weight:500;box-shadow:0 2px 5px rgba(255,0,0,0.1);"
-                    class="mt-2">
-                  <i class="i-Remove text-danger mr-2" style="font-size:18px;"></i>
-                  {{ scan_error }}
+<b-modal 
+  hide-footer 
+  size="lg"
+  id="Scan_Barcode_Modal"
+  title="Scan Barcode"
+  no-close-on-backdrop
+  no-close-on-esc
+>
+  <validation-observer ref="Scan_Barcode_Form">
+    <b-form @submit.prevent="Submit_Scan_Barcode">
+      <b-row>
+
+        <b-col cols="12"
+               v-for="item in scan_details"
+               :key="item.detail_id"
+               class="mb-3">
+
+          <b-card class="p-3">
+
+            <h5>
+              {{ item.name }}
+              <small class="text-muted">({{ item.code }})</small>
+            </h5>
+
+            <b-form-group :label="'Barcode for ' + item.name">
+              <div class="input-group">
+
+                <div class="input-group-prepend">
+                  <img src="/assets_setup/scan.png"
+                       alt="Scan"
+                       @click="startSingleScan(item)"
+                       style="height: 38px; padding:6px; cursor:pointer;">
                 </div>
 
-                </b-form-group>
+                <b-form-input
+                  v-model="item.scan_barcode"
+                  readonly
+                  :placeholder="'Scan barcode of ' + item.name"
+                ></b-form-input>
 
-                </validation-provider>
-              </b-col>
+              </div>
+            </b-form-group>
 
-              <!-- Type for category 123 -->
-              <b-col v-if="scan.category_id === '123'" lg="6" md="12" sm="12">
-                <validation-provider name="Type" :rules="{ required: true }">
-                  <b-form-group :label="$t('Type')">
-                    <b-form-radio-group v-model="scan.type" :checked="'indoor'">
-                      <b-form-radio value="indoor">Indoor</b-form-radio>
-                      <b-form-radio value="outdoor">Outdoor</b-form-radio>
-                    </b-form-radio-group>
-                  </b-form-group>
-                </validation-provider>
-              </b-col>
-              
-              <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit" :disabled="scanning">
-                  <i class="i-Yes me-2 font-weight-bold"></i> {{$t('Scan')}}
-                </b-button>
-                <div v-once class="typo__p" v-if="scanning">
-                  <div class="spinner sm spinner-primary mt-3"></div>
-                </div>
-              </b-col>
-            </b-row>
-          </b-form>
-        </b-modal>
-      </validation-observer>
+            <b-form-group v-if="item.category_id === '123'" label="Type">
+              <b-form-radio-group v-model="item.scan_type">
+                <b-form-radio value="indoor">Indoor</b-form-radio>
+                <b-form-radio value="outdoor">Outdoor</b-form-radio>
+              </b-form-radio-group>
+            </b-form-group>
+
+          </b-card>
+
+        </b-col>
+
+      </b-row>
+    </b-form>
+  </validation-observer>
+</b-modal>
+
+
+
     </div>
   </template>
 
@@ -615,72 +604,73 @@ export default {
     title: "Purchases"
   },
 
-  data() {
-    return {
-      paymentProcessing: false,
-      isLoading: true,
-      serverParams: {
-        sort: {
-          field: "id",
-          type: "desc"
+    data() {
+      return {
+        paymentProcessing: false,
+        isLoading: true,
+        serverParams: {
+          sort: {
+            field: "id",
+            type: "desc"
+          },
+          page: 1,
+          perPage: 10
         },
-        page: 1,
-        perPage: 10
-      },
-      selectedIds: [],
-      search: "",
-      totalRows: "",
-      showDropdown: false,
-      EditPaiementMode: false,
-      Filter_Supplier: "",
-      Filter_status: "",
-      Filter_Payment: "",
-      Filter_warehouse: "",
-      Filter_Ref: "",
-      Filter_date: "",
-      Purchase_id: "",
-      suppliers: [],
-      warehouses: [],
-      payment_methods: [],
-      details: [],
-      purchases: [],
-      purchase: {},
-      factures: [],
-      accounts: [],
-      purchase_due:'',
-      due:0,
-      facture: {
-        montant: "",
-        received_amount: "",
-        payment_method_id: "",
-        notes: ""
-      },
-      limit: "10",
-      email: {
-        to: "",
-        subject: "",
-        message: "",
-        client_name: "",
-        purchase_Ref: ""
-      },
-      emailPayment: {
-        id: "",
-        to: "",
-        subject: "",
-        message: "",
-        client_name: "",
-        Ref: ""
-      },
-      scan: {
-        barcode: "",
-        type: "",
-        category_id: null
-      },
-      scan_error: "", 
-      scanning: false,
+        selectedIds: [],
+        search: "",
+        totalRows: "",
+        showDropdown: false,
+        EditPaiementMode: false,
+        Filter_Supplier: "",
+        Filter_status: "",
+        Filter_Payment: "",
+        Filter_warehouse: "",
+        Filter_Ref: "",
+        Filter_date: "",
+        Purchase_id: "",
+        suppliers: [],
+        warehouses: [],
+        payment_methods: [],
+        details: [],
+        purchases: [],
+        purchase: {},
+        factures: [],
+        accounts: [],
+        purchase_due:'',
+        due:0,
+        facture: {
+          montant: "",
+          received_amount: "",
+          payment_method_id: "",
+          notes: ""
+        },
+        limit: "10",
+        email: {
+          to: "",
+          subject: "",
+          message: "",
+          client_name: "",
+          purchase_Ref: ""
+        },
+        emailPayment: {
+          id: "",
+          to: "",
+          subject: "",
+          message: "",
+          client_name: "",
+          Ref: ""
+        },
+        scan: {
+          barcode: "",
+          type: "",
+          category_id: null
+        },
+        scan_error: "", 
+        scanning: false,
+        scan_details: [],
 
-    };
-  },
+      };
+    },
 
    mounted() {
     this.$root.$on("bv::dropdown::show", bvEvent => {
@@ -785,19 +775,24 @@ export default {
     }
   },
 
-  methods: {
+    methods: {
+      // Add method to handle scan icon click for individual product barcode scanning
+      startSingleScan(item) {
+        this.currentScanItem = item;
+        this.$bvModal.show("purchase_barcode_scanner");
+      },
 
-    updateParams(newProps) {
-      this.serverParams = Object.assign({}, this.serverParams, newProps);
-    },
+      updateParams(newProps) {
+        this.serverParams = Object.assign({}, this.serverParams, newProps);
+      },
 
-    //---- Event Page Change
-    onPageChange({ currentPage }) {
-      if (this.serverParams.page !== currentPage) {
-        this.updateParams({ page: currentPage });
-        this.Get_Purchases(currentPage);
-      }
-    },
+      //---- Event Page Change
+      onPageChange({ currentPage }) {
+        if (this.serverParams.page !== currentPage) {
+          this.updateParams({ page: currentPage });
+          this.Get_Purchases(currentPage);
+        }
+      },
 
     //---- Event Per Page Change
     onPerPageChange({ currentPerPage }) {
@@ -1562,66 +1557,85 @@ export default {
 
     //----------------------------------------- Scan Barcode -------------------------------\\
     Scan_Barcode(row) {
-      this.scan_error = "";  // clear previous error
-
-     const cat = row.category_codes ? row.category_codes[0] : null;
-      this.scan = {
-        barcode: "",
-        type: cat === '123' ? 'indoor' : null,
-        category_id: row.category_codes ? row.category_codes[0] : null
-      };
-      this.purchase_id = row.id;
-      this.$bvModal.show("Scan_Barcode_Modal");
-    },
-
-     openScanModal() {
-      this.$bvModal.show('purchase_barcode_scanner');
-      },
-
-    // When scanned → set barcode
-    onPurchaseScan(decodedText) {
-      this.scan.barcode = decodedText;
-      this.$bvModal.hide('purchase_barcode_scanner');
-      setTimeout(() => {
-        this.Submit_Scan_Barcode();
-      }, 150);
-    },
-
-    //----------------------------------------- Submit Scan Barcode -------------------------------\\
-    async Submit_Scan_Barcode() {
       this.scan_error = "";
-      const success = await this.$refs.Scan_Barcode_Form.validate();
-      if (!success) {
-        return;
+      console.log("Row Data:", row);
+      // Build list for all products
+      this.scan_details = row.details.map((d, index) => {
+      const category = row.category_codes[index] ?? null;
+        return {
+          detail_id: d.id,
+          name: d.name,
+          code: d.code,
+          category_id: category,
+          scan_barcode: "",
+          scan_type: null,
+        };
+      });
+      this.currentScanItem = null;
+      this.$bvModal.show("Scan_Barcode_Modal");
+    }
+
+    ,
+    openScanModal(item) {
+      this.currentScanItem = item;
+      this.$bvModal.show("purchase_barcode_scanner");
+    },
+
+    onPurchaseScan(decodedText) {
+      if (!this.currentScanItem) return;
+
+      // Fill into that product only
+      this.currentScanItem.scan_barcode = decodedText;
+
+      // Default indoor type for category=123 if user hasn't selected
+      if (this.currentScanItem.category_id === "123" && !this.currentScanItem.scan_type) {
+        this.currentScanItem.scan_type = "indoor";
       }
+
+      this.$bvModal.hide("purchase_barcode_scanner");
+
+      // Auto-submit for that product only
+      setTimeout(() => {
+        this.Submit_Single_Scan(this.currentScanItem);
+      }, 150);
+    }
+    ,
+
+        //----------------------------------------- Submit Scan Barcode -------------------------------\\
+    async Submit_Single_Scan(item) {
+      this.scan_error = "";
       this.scanning = true;
+
       NProgress.start();
       NProgress.set(0.1);
+
       try {
         const response = await axios.post("purchases/scan-barcode", {
-          purchase_id: this.purchase_id,
-          barcode: this.scan.barcode,
-          type: this.scan.type
+          purchase_id: item.detail_id,
+          barcode: item.scan_barcode,
+          type: item.scan_type || null,
         });
+
         this.scanning = false;
-        this.makeToast(
-          "success",
-          this.$t("Barcode scanned successfully"),
-          this.$t("Success")
-        );
+        this.makeToast("success", "Barcode scanned successfully", "Success");
         this.Get_Purchases(this.serverParams.page);
+
       } catch (error) {
         this.scanning = false;
         NProgress.done();
+
         const msg =
-          error.message ||                      // when error = {success:false,message:""}
-          error.response?.data?.message ||      // when axios gives response object
+          error.response?.data?.message ||
+          error.message ||
           "Failed to scan barcode";
+
         this.scan_error = msg;
         console.log("Error barcode:", msg);
-        this.makeToast("danger", msg, this.$t("Failed"));
+
+        this.makeToast("danger", msg, "Failed");
       }
     }
+
   },
 
   //-----------------------------Created function-------------------

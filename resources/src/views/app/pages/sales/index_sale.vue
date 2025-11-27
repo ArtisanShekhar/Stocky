@@ -220,7 +220,7 @@
 
             <span v-else-if="props.row.shipping_status == 'cancelled'" class="badge badge-outline-danger">{{$t('Cancelled')}}</span>
           </div>
-           <div v-else-if="props.column.field == 'Ref'">
+          <div v-else-if="props.column.field == 'Ref'">
               <router-link
                 :to="'/app/sales/detail/'+props.row.id"
               >
@@ -229,6 +229,14 @@
               <small v-if="props.row.sale_has_return == 'yes'"><i class="text-15 text-danger i-Back"></i></small>
               
             </div>
+          <div v-else-if="props.column.field == 'scanned'">
+            <span>{{ props.row.total_scanned_quantity || 0 }}</span>
+            <button class="btn btn-sm btn-primary ml-2" @click="Scan_Barcode(props.row)">Scan</button>
+          </div>
+          <div v-else-if="props.column.field == 'categories'">
+            {{ props.row.categories }}
+          </div>
+
         </template>
       </vue-good-table>
     </div>
@@ -839,6 +847,73 @@
         {{$t('print')}}
       </button>
     </b-modal>
+     <b-modal hide-footer id="sale_barcode_scanner" size="md" title="Barcode Scanner">
+      <qrcode-scanner
+        :qrbox="250"
+        :fps="10"
+        style="width: 100%; height: calc(100vh - 56px);"
+        @result="onPurchaseScan"
+      />
+    </b-modal>
+    <!-- Modal Scan Barcode -->
+<b-modal 
+  hide-footer 
+  size="lg"
+  id="Sale_Barcode_Modal"
+  title="Scan Barcode"
+  no-close-on-backdrop
+  no-close-on-esc
+>
+  <validation-observer ref="Scan_Barcode_Form">
+    <b-form @submit.prevent="Submit_Scan_Barcode">
+      <b-row>
+
+        <b-col cols="12"
+               v-for="item in scan_details"
+               :key="item.detail_id"
+               class="mb-3">
+
+          <b-card class="p-3">
+
+            <h5>
+              {{ item.name }}
+              <small class="text-muted">({{ item.code }})</small>
+            </h5>
+
+            <b-form-group :label="'Barcode for ' + item.name">
+              <div class="input-group">
+
+                <div class="input-group-prepend">
+                  <img src="/assets_setup/scan.png"
+                       alt="Scan"
+                       @click="startSingleScan(item)"
+                       style="height: 38px; padding:6px; cursor:pointer;">
+                </div>
+
+                <b-form-input
+                  v-model="item.scan_barcode"
+                  readonly
+                  :placeholder="'Scan barcode of ' + item.name"
+                ></b-form-input>
+
+              </div>
+            </b-form-group>
+
+            <b-form-group v-if="item.category_id === '123'" label="Type">
+              <b-form-radio-group v-model="item.scan_type">
+                <b-form-radio value="indoor">Indoor</b-form-radio>
+                <b-form-radio value="outdoor">Outdoor</b-form-radio>
+              </b-form-radio-group>
+            </b-form-group>
+
+          </b-card>
+
+        </b-col>
+
+      </b-row>
+    </b-form>
+  </validation-observer>
+</b-modal>
   </div>
 </template>
 
@@ -858,7 +933,7 @@ export default {
   metaInfo: {
     title: "Sales"
   },
-  data() {
+data() {
     return {
       stripe_key:'',
       stripe: {},
@@ -905,6 +980,18 @@ export default {
       sale_due:'',
       due:0,
       client_name:'',
+
+      // Added for barcode scanning
+      scan_details: [],
+          scan: {
+          barcode: "",
+          type: "",
+          category_id: null
+        },
+      currentScanItem: null,
+      scan_error: "",
+      scanning: false,
+
       invoice_pos: {
         sale: {
           Ref: "",
@@ -1046,6 +1133,17 @@ export default {
           html: true,
           tdClass: "text-left",
           thClass: "text-left"
+        },{
+          label: this.$t("Released count"),
+          field: "scanned",
+          tdClass: "text-left",
+          thClass: "text-left"
+        },
+        {
+          label: this.$t("Categories"),
+          field: "categories",
+          tdClass: "text-left",
+          thClass: "text-left"
         },
         {
           label: this.$t("Shipping_status"),
@@ -1066,7 +1164,91 @@ export default {
     }
   },
   methods: {
+      // Add method to handle scan icon click for individual product barcode scanning
+    startSingleScan(item) {
+        this.currentScanItem = item;
+        this.$bvModal.show("sale_barcode_scanner");
+      },
+          //----------------------------------------- Scan Barcode -------------------------------\\
+    Scan_Barcode(row) {
+      this.scan_error = "";
+      console.log("Row Data:", row);
+      // Build list for all products
+      this.scan_details = row.details.map((d, index) => {
+      const category = row.category_codes[index] ?? null;
+        return {
+          detail_id: d.id,
+          name: d.name,
+          code: d.code,
+          category_id: category,
+          scan_barcode: "",
+          scan_type: null,
+        };
+      });
+      this.currentScanItem = null;
+      this.$bvModal.show("Sale_Barcode_Modal");
+    }
 
+    ,
+    openScanModal(item) {
+      this.currentScanItem = item;
+      this.$bvModal.show("sale_barcode_scanner");
+    },
+
+    onPurchaseScan(decodedText) {
+      if (!this.currentScanItem) return;
+
+      // Fill into that product only
+      this.currentScanItem.scan_barcode = decodedText;
+
+      // Default indoor type for category=123 if user hasn't selected
+      if (this.currentScanItem.category_id === "123" && !this.currentScanItem.scan_type) {
+        this.currentScanItem.scan_type = "indoor";
+      }
+
+      this.$bvModal.hide("sale_barcode_scanner");
+
+      // Auto-submit for that product only
+      setTimeout(() => {
+        this.Submit_Single_Scan(this.currentScanItem);
+      }, 150);
+    }
+    ,
+
+        //----------------------------------------- Submit Scan Barcode -------------------------------\\
+    async Submit_Single_Scan(item) {
+      this.scan_error = "";
+      this.scanning = true;
+
+      NProgress.start();
+      NProgress.set(0.1);
+
+      try {
+        const response = await axios.post("sales/scan-barcode", {
+          purchase_id: item.detail_id,
+          barcode: item.scan_barcode,
+          type: item.scan_type || null,
+        });
+
+        this.scanning = false;
+        this.makeToast("success", "Barcode scanned successfully", "Success");
+        this.Get_Sales(this.serverParams.page);
+
+      } catch (error) {
+        this.scanning = false;
+        NProgress.done();
+
+        const msg =
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to scan barcode";
+
+        this.scan_error = msg;
+        console.log("Error barcode:", msg);
+
+        this.makeToast("danger", msg, "Failed");
+      }
+    },
      async Selected_PaymentMethod(value) {
       if (value == '1' || value == 1) {
         this.savedPaymentMethods = [];
@@ -1524,7 +1706,7 @@ export default {
       }
     },
     //----------------------------------------- Get all Sales ------------------------------\\
-    Get_Sales(page) {
+Get_Sales(page) {
       // Start the progress bar.
       NProgress.start();
       NProgress.set(0.1);
@@ -1557,7 +1739,14 @@ export default {
             this.limit
         )
         .then(response => {
-          this.sales = response.data.sales;
+          // Map sales to ensure categories property exists
+          this.sales = response.data.sales.map(sale => {
+            return {
+              ...sale,
+              categories: sale.categories || '' // fallback to empty string if missing
+            };
+          });
+
           this.customers = response.data.customers;
           this.accounts = response.data.accounts;
           this.warehouses = response.data.warehouses;

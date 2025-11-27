@@ -32,6 +32,8 @@ use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Setting;
 use App\Models\PosSetting;
+use App\Models\SaleBarcodeScan;
+use App\Models\PurchaseBarcodeScan;
 use App\Models\User;
 use App\Models\UserWarehouse;
 use App\Models\Warehouse;
@@ -49,9 +51,153 @@ use ArPHP\I18N\Arabic;
 class SalesController extends BaseController
 {
 
+    //---------------- Scan Barcode for Sale Detail ----------------\\
+
+    public function scanBarcode(Request $request)
+    {
+        $this->authorizeForUser($request->user('api'), 'update', Sale::class);
+
+        $request->validate([
+            'sale_detail_id' => 'required|exists:sale_details,id',
+            'barcode' => 'required|string',
+            'type' => 'nullable|in:indoor,outdoor',
+        ]);
+
+        $detail = SaleDetail::with('product.category')->findOrFail($request->sale_detail_id);
+        $sale = Sale::findOrFail($detail->sale_id);
+
+        $product = Product::where('code', $detail->product->code)->first();
+        if (!$product) {
+            return response()->json(['success' => false, 'message' => 'Product code not found.'], 404);
+        }
+
+        // Barcode must start with product code
+        if (strpos($request->barcode, $product->code) !== 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid barcode. It does not match product code series.'
+            ], 400);
+        }
+
+        // Check if barcode exists in purchase stock
+        $existsInWarehouse = PurchaseBarcodeScan::where('barcode', $request->barcode)->exists();
+
+        if (!$existsInWarehouse) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This barcode does not exist in warehouse stock.'
+            ], 400);
+        }
+
+        // Warehouse product
+        $warehouseProduct = product_warehouse::firstOrCreate([
+            'product_id' => $product->id,
+            'warehouse_id' => $sale->warehouse_id,
+        ], [
+            'qte' => 0,
+            'manage_stock' => 1
+        ]);
+
+        $categoryCode = $detail->product->category->code ?? null;
+
+        // Must be released
+        if (!in_array($sale->statut, ['released'])) {
+            return response()->json(['success' => false, 'message' => 'Sale must be released to scan barcodes.'], 400);
+        }
+
+        // Check duplicate barcode
+        $existingBarcode = SaleBarcodeScan::where('barcode', $request->barcode)
+            ->where('sale_detail_id', $detail->id)
+            ->exists();
+
+        if ($existingBarcode) {
+            return response()->json(['success' => false, 'message' => 'This barcode has already been scanned.'], 400);
+        }
+
+        // ============================
+        // CATEGORY 123 (two scans = one unit)
+        // ============================
+        if ($categoryCode == '123') {
+
+            if (!$request->type) {
+                return response()->json(['success' => false, 'message' => 'Type (indoor/outdoor) is required for this category.'], 400);
+            }
+
+            $indoorScans = SaleBarcodeScan::where('sale_detail_id', $detail->id)
+                ->where('type', 'indoor')
+                ->count();
+            $outdoorScans = SaleBarcodeScan::where('sale_detail_id', $detail->id)
+                ->where('type', 'outdoor')
+                ->count();
+
+            $maxQty = $detail->quantity;
+
+            if ($request->type == 'indoor' && $indoorScans >= $maxQty) {
+                return response()->json(['success' => false, 'message' => 'Cannot scan more indoor barcodes than ordered quantity.'], 400);
+            }
+
+            if ($request->type == 'outdoor' && $outdoorScans >= $maxQty) {
+                return response()->json(['success' => false, 'message' => 'Cannot scan more outdoor barcodes than ordered quantity.'], 400);
+            }
+
+            $oldUnits = floor(($indoorScans + $outdoorScans) / 2);
+
+            // Add Sale Scan
+            SaleBarcodeScan::create([
+                'sale_detail_id' => $detail->id,
+                'barcode' => $request->barcode,
+                'type' => $request->type,
+            ]);
+
+            // Update counters
+            $indoorScans += $request->type == 'indoor' ? 1 : 0;
+            $outdoorScans += $request->type == 'outdoor' ? 1 : 0;
+
+            $totalScans = $indoorScans + $outdoorScans;
+            $newUnits = floor($totalScans / 2);
+
+            $decrement = $oldUnits - $newUnits;
+
+            if ($decrement < 0) {
+                // Only decrement stock when 1 complete unit is scanned (2 barcodes)
+                $warehouseProduct->qte -= abs($decrement);
+                $warehouseProduct->save();
+            }
+
+            return response()->json(['success' => true, 'message' => 'Barcode scanned successfully.', 'released_quantity' => $newUnits]);
+        }
+
+        // ============================
+        // NORMAL PRODUCT (each scan = one unit)
+        // ============================
+        else {
+
+            $existingScans = SaleBarcodeScan::where('sale_detail_id', $detail->id)->count();
+
+            if ($existingScans >= $detail->quantity) {
+                return response()->json(['success' => false, 'message' => 'Cannot scan more barcodes than ordered quantity.'], 400);
+            }
+
+            // Add scan
+            SaleBarcodeScan::create([
+                'sale_detail_id' => $detail->id,
+                'barcode' => $request->barcode,
+                'type' => null,
+            ]);
+
+            // DECREMENT WAREHOUSE
+            $warehouseProduct->qte -= 1;
+            $warehouseProduct->save();
+
+            return response()->json(['success' => true, 'message' => 'Barcode scanned successfully.', 'released_quantity' => $existingScans + 1]);
+        }
+    }
+
+
+
     //------------- GET ALL SALES -----------\\
 
-    public function index(request $request)
+public function index(request $request)
     {
         $this->authorizeForUser($request->user('api'), 'view', Sale::class);
         $role = Auth::user()->roles()->first();
@@ -87,7 +233,7 @@ class SalesController extends BaseController
         $data = array();
 
         // Check If User Has Permission View  All Records
-        $Sales = Sale::with('facture', 'client', 'warehouse','user')
+        $Sales = Sale::with('facture', 'client', 'warehouse','user', 'details.product.category')
             ->where('deleted_at', '=', null)
             ->where(function ($query) use ($view_records) {
                 if (!$view_records) {
@@ -156,7 +302,46 @@ class SalesController extends BaseController
             }else{
                 $item['sale_has_return'] = 'no';
             }
+            $category_codes = $Sale->details->pluck('product.category.code')->unique()->filter()->values();
+
+            $item['category_codes'] = $category_codes;
+            // Aggregate unique category names of products in the sale details
+            $categories = $Sale->details->pluck('product.category.name')->unique()->filter()->values()->all();
+            $item['categories'] = implode(', ', $categories);
+
+            // Calculate total scanned/released quantity
+            $total_scanned = 0;
+            foreach ($Sale->details as $detail) {
+                $scans = SaleBarcodeScan::where('sale_detail_id', $detail->id)->count();
+                $category_code = $detail->product->category->code ?? null;
+                if ($category_code == '123') {
+                    $total_scanned += floor($scans / 2);
+                } else {
+                    $total_scanned += $scans;
+                }
+            }
+            $item['total_scanned_quantity'] = $total_scanned;
             
+            $item['details'] = $Sale->details->map(function($d) {
+
+                $name = $d->product_variant_id ? '[' . $d->productVariant->name . '] ' . $d->product->name : $d->product->name;
+
+                $category_code = $d->product->category->code ?? null;
+
+                return [
+
+                    'id' => $d->id,
+
+                    'name' => $name,
+
+                    'code' => $d->product->code,
+
+                    'category_code' => $category_code,
+
+                ];
+
+            });
+
             $data[] = $item;
         }
         
