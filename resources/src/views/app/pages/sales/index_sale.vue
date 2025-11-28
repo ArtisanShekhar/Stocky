@@ -1225,7 +1225,7 @@ data() {
 
       try {
         const response = await axios.post("sales/scan-barcode", {
-          purchase_id: item.detail_id,
+          sale_detail_id: item.detail_id,
           barcode: item.scan_barcode,
           type: item.scan_type || null,
         });

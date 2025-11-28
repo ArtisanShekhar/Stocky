@@ -367,7 +367,7 @@ class PurchasesController extends BaseController
 
                     'name' => $name,
 
-                    'code' => $d->product->code,
+                    'code' => $d->product->serial_number,
 
                     'category_code' => $category_code,
 
@@ -733,77 +733,77 @@ class PurchasesController extends BaseController
 
                     if($value['purchase_unit_id'] !== null){
 
-                        if ($current_Purchase->statut == "received") {
+                        // if ($current_Purchase->statut == "received") {
 
 
 
-                            if ($value['product_variant_id'] !== null) {
+                        //     if ($value['product_variant_id'] !== null) {
 
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
 
-                                    ->where('warehouse_id', $current_Purchase->warehouse_id)
+                        //             ->where('warehouse_id', $current_Purchase->warehouse_id)
 
-                                    ->where('product_id', $value['product_id'])
+                        //             ->where('product_id', $value['product_id'])
 
-                                    ->where('product_variant_id', $value['product_variant_id'])
+                        //             ->where('product_variant_id', $value['product_variant_id'])
 
-                                    ->first();
-
-
-
-                                if ($unit && $product_warehouse) {
-
-                                    if ($unit->operator == '/') {
-
-                                        $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
-
-                                    } else {
-
-                                        $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
-
-                                    }
+                        //             ->first();
 
 
 
-                                    $product_warehouse->save();
+                        //         if ($unit && $product_warehouse) {
 
-                                }
+                        //             if ($unit->operator == '/') {
 
+                        //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
 
+                        //             } else {
 
-                            } else {
+                        //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
 
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-
-                                    ->where('warehouse_id', $current_Purchase->warehouse_id)
-
-                                    ->where('product_id', $value['product_id'])
-
-                                    ->first();
+                        //             }
 
 
 
-                                if ($unit && $product_warehouse) {
+                        //             $product_warehouse->save();
 
-                                    if ($unit->operator == '/') {
-
-                                        $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
-
-                                    } else {
-
-                                        $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
-
-                                    }
+                        //         }
 
 
 
-                                    $product_warehouse->save();
+                        //     } else {
 
-                                }
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
 
-                            }
+                        //             ->where('warehouse_id', $current_Purchase->warehouse_id)
 
-                        }
+                        //             ->where('product_id', $value['product_id'])
+
+                        //             ->first();
+
+
+
+                        //         if ($unit && $product_warehouse) {
+
+                        //             if ($unit->operator == '/') {
+
+                        //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
+
+                        //             } else {
+
+                        //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
+
+                        //             }
+
+
+
+                        //             $product_warehouse->save();
+
+                        //         }
+
+                        //     }
+
+                        // }
 
 
 
@@ -3637,11 +3637,11 @@ class PurchasesController extends BaseController
 
 
 
-        $product = Product::where('code', $detail->product->code)->first();
+        $product = Product::where('serial_number', $detail->product->serial_number)->first();
 
         if (!$product) {
 
-            return response()->json(['success' => false, 'message' => 'Product code not found.'], 404);
+            return response()->json(['success' => false, 'message' => 'Product Serial number not found.'], 404);
 
         }
 
@@ -3649,13 +3649,13 @@ class PurchasesController extends BaseController
 
         // Barcode must start with product code
 
-        if (strpos($request->barcode, $product->code) !== 0) {
+        if (strpos($request->barcode, $product->serial_number) !== 0) {
 
             return response()->json([
 
                 'success' => false,
 
-                'message' => 'Invalid barcode. It does not match product code series.'
+                'message' => 'Invalid barcode. It does not match product Serial number series.'
 
             ], 400);
 

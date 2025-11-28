@@ -66,16 +66,16 @@ class SalesController extends BaseController
         $detail = SaleDetail::with('product.category')->findOrFail($request->sale_detail_id);
         $sale = Sale::findOrFail($detail->sale_id);
 
-        $product = Product::where('code', $detail->product->code)->first();
+        $product = Product::where('serial_number', $detail->product->serial_number)->first();
         if (!$product) {
-            return response()->json(['success' => false, 'message' => 'Product code not found.'], 404);
+            return response()->json(['success' => false, 'message' => 'Product Serial number not found.'], 404);
         }
 
         // Barcode must start with product code
-        if (strpos($request->barcode, $product->code) !== 0) {
+        if (strpos($request->barcode, $product->serial_number) !== 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid barcode. It does not match product code series.'
+                'message' => 'Invalid barcode. It does not match product serial number series.'
             ], 400);
         }
 
@@ -197,178 +197,178 @@ class SalesController extends BaseController
 
     //------------- GET ALL SALES -----------\\
 
-public function index(request $request)
-    {
-        $this->authorizeForUser($request->user('api'), 'view', Sale::class);
-        $role = Auth::user()->roles()->first();
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
-        // How many items do you want to display.
-        $perPage = $request->limit;
+    public function index(request $request)
+        {
+            $this->authorizeForUser($request->user('api'), 'view', Sale::class);
+            $role = Auth::user()->roles()->first();
+            $view_records = Role::findOrFail($role->id)->inRole('record_view');
+            // How many items do you want to display.
+            $perPage = $request->limit;
 
-        $pageStart = \Request::get('page', 1);
-        // Start displaying items from this number;
-        $offSet = ($pageStart * $perPage) - $perPage;
-        $order = $request->SortField;
-        $dir = $request->SortType;
-        $helpers = new helpers();
-        // Filter fields With Params to retrieve
-        $param = array(
-            0 => 'like',
-            1 => 'like',
-            2 => '=',
-            3 => 'like',
-            4 => '=',
-            5 => '=',
-            6 => 'like',
-        );
-        $columns = array(
-            0 => 'Ref',
-            1 => 'statut',
-            2 => 'client_id',
-            3 => 'payment_statut',
-            4 => 'warehouse_id',
-            5 => 'date',
-            6 => 'shipping_status',
-        );
-        $data = array();
+            $pageStart = \Request::get('page', 1);
+            // Start displaying items from this number;
+            $offSet = ($pageStart * $perPage) - $perPage;
+            $order = $request->SortField;
+            $dir = $request->SortType;
+            $helpers = new helpers();
+            // Filter fields With Params to retrieve
+            $param = array(
+                0 => 'like',
+                1 => 'like',
+                2 => '=',
+                3 => 'like',
+                4 => '=',
+                5 => '=',
+                6 => 'like',
+            );
+            $columns = array(
+                0 => 'Ref',
+                1 => 'statut',
+                2 => 'client_id',
+                3 => 'payment_statut',
+                4 => 'warehouse_id',
+                5 => 'date',
+                6 => 'shipping_status',
+            );
+            $data = array();
 
-        // Check If User Has Permission View  All Records
-        $Sales = Sale::with('facture', 'client', 'warehouse','user', 'details.product.category')
-            ->where('deleted_at', '=', null)
-            ->where(function ($query) use ($view_records) {
-                if (!$view_records) {
-                    return $query->where('user_id', '=', Auth::user()->id);
-                }
-            });
-        //Multiple Filter
-        $Filtred = $helpers->filter($Sales, $columns, $param, $request)
-        // Search With Multiple Param
-            ->where(function ($query) use ($request) {
-                return $query->when($request->filled('search'), function ($query) use ($request) {
-                    return $query->where('Ref', 'LIKE', "%{$request->search}%")
-                        ->orWhere('statut', 'LIKE', "%{$request->search}%")
-                        ->orWhere('GrandTotal', $request->search)
-                        ->orWhere('payment_statut', 'like', "%{$request->search}%")
-                        ->orWhere('shipping_status', 'like', "%{$request->search}%")
-                        ->orWhere(function ($query) use ($request) {
-                            return $query->whereHas('client', function ($q) use ($request) {
-                                $q->where('name', 'LIKE', "%{$request->search}%");
-                            });
-                        })
-                        ->orWhere(function ($query) use ($request) {
-                            return $query->whereHas('warehouse', function ($q) use ($request) {
-                                $q->where('name', 'LIKE', "%{$request->search}%");
-                            });
-                        });
+            // Check If User Has Permission View  All Records
+            $Sales = Sale::with('facture', 'client', 'warehouse','user', 'details.product.category')
+                ->where('deleted_at', '=', null)
+                ->where(function ($query) use ($view_records) {
+                    if (!$view_records) {
+                        return $query->where('user_id', '=', Auth::user()->id);
+                    }
                 });
-            });
+            //Multiple Filter
+            $Filtred = $helpers->filter($Sales, $columns, $param, $request)
+            // Search With Multiple Param
+                ->where(function ($query) use ($request) {
+                    return $query->when($request->filled('search'), function ($query) use ($request) {
+                        return $query->where('Ref', 'LIKE', "%{$request->search}%")
+                            ->orWhere('statut', 'LIKE', "%{$request->search}%")
+                            ->orWhere('GrandTotal', $request->search)
+                            ->orWhere('payment_statut', 'like', "%{$request->search}%")
+                            ->orWhere('shipping_status', 'like', "%{$request->search}%")
+                            ->orWhere(function ($query) use ($request) {
+                                return $query->whereHas('client', function ($q) use ($request) {
+                                    $q->where('name', 'LIKE', "%{$request->search}%");
+                                });
+                            })
+                            ->orWhere(function ($query) use ($request) {
+                                return $query->whereHas('warehouse', function ($q) use ($request) {
+                                    $q->where('name', 'LIKE', "%{$request->search}%");
+                                });
+                            });
+                    });
+                });
 
-        $totalRows = $Filtred->count();
-        if($perPage == "-1"){
-            $perPage = $totalRows;
-        }
-        
-        $Sales = $Filtred->offset($offSet)
-            ->limit($perPage)
-            ->orderBy($order, $dir)
-            ->get();
-
-        foreach ($Sales as $Sale) {
-            
-            $item['id']   = $Sale['id'];
-            $item['date'] = $Sale['date'] . ' ' . $Sale['time'];
-            $item['Ref']  = $Sale['Ref'];
-            $item['created_by'] = $Sale['user']->username;
-            $item['statut'] = $Sale['statut'];
-            $item['shipping_status'] =  $Sale['shipping_status'];
-            $item['discount'] = $Sale['discount'];
-            $item['shipping'] = $Sale['shipping'];
-            $item['warehouse_name'] = $Sale['warehouse']['name'];
-            $item['client_id'] = $Sale['client']['id'];
-            $item['client_name'] = $Sale['client']['name'];
-            $item['client_email'] = $Sale['client']['email'];
-            $item['client_tele'] = $Sale['client']['phone'];
-            $item['client_code'] = $Sale['client']['code'];
-            $item['client_adr'] = $Sale['client']['adresse'];
-            $item['GrandTotal'] = number_format($Sale['GrandTotal'], 2, '.', '');
-            $item['paid_amount'] = number_format($Sale['paid_amount'], 2, '.', '');
-            $item['due'] = number_format($item['GrandTotal'] - $item['paid_amount'], 2, '.', '');
-            $item['payment_status'] = $Sale['payment_statut'];
-
-            if (SaleReturn::where('sale_id', $Sale['id'])->where('deleted_at', '=', null)->exists()) {
-                $sellReturn = SaleReturn::where('sale_id', $Sale['id'])->where('deleted_at', '=', null)->first();
-                $item['salereturn_id'] = $sellReturn->id;
-                $item['sale_has_return'] = 'yes';
-            }else{
-                $item['sale_has_return'] = 'no';
+            $totalRows = $Filtred->count();
+            if($perPage == "-1"){
+                $perPage = $totalRows;
             }
-            $category_codes = $Sale->details->pluck('product.category.code')->unique()->filter()->values();
+            
+            $Sales = $Filtred->offset($offSet)
+                ->limit($perPage)
+                ->orderBy($order, $dir)
+                ->get();
 
-            $item['category_codes'] = $category_codes;
-            // Aggregate unique category names of products in the sale details
-            $categories = $Sale->details->pluck('product.category.name')->unique()->filter()->values()->all();
-            $item['categories'] = implode(', ', $categories);
+            foreach ($Sales as $Sale) {
+                
+                $item['id']   = $Sale['id'];
+                $item['date'] = $Sale['date'] . ' ' . $Sale['time'];
+                $item['Ref']  = $Sale['Ref'];
+                $item['created_by'] = $Sale['user']->username;
+                $item['statut'] = $Sale['statut'];
+                $item['shipping_status'] =  $Sale['shipping_status'];
+                $item['discount'] = $Sale['discount'];
+                $item['shipping'] = $Sale['shipping'];
+                $item['warehouse_name'] = $Sale['warehouse']['name'];
+                $item['client_id'] = $Sale['client']['id'];
+                $item['client_name'] = $Sale['client']['name'];
+                $item['client_email'] = $Sale['client']['email'];
+                $item['client_tele'] = $Sale['client']['phone'];
+                $item['client_code'] = $Sale['client']['code'];
+                $item['client_adr'] = $Sale['client']['adresse'];
+                $item['GrandTotal'] = number_format($Sale['GrandTotal'], 2, '.', '');
+                $item['paid_amount'] = number_format($Sale['paid_amount'], 2, '.', '');
+                $item['due'] = number_format($item['GrandTotal'] - $item['paid_amount'], 2, '.', '');
+                $item['payment_status'] = $Sale['payment_statut'];
 
-            // Calculate total scanned/released quantity
-            $total_scanned = 0;
-            foreach ($Sale->details as $detail) {
-                $scans = SaleBarcodeScan::where('sale_detail_id', $detail->id)->count();
-                $category_code = $detail->product->category->code ?? null;
-                if ($category_code == '123') {
-                    $total_scanned += floor($scans / 2);
-                } else {
-                    $total_scanned += $scans;
+                if (SaleReturn::where('sale_id', $Sale['id'])->where('deleted_at', '=', null)->exists()) {
+                    $sellReturn = SaleReturn::where('sale_id', $Sale['id'])->where('deleted_at', '=', null)->first();
+                    $item['salereturn_id'] = $sellReturn->id;
+                    $item['sale_has_return'] = 'yes';
+                }else{
+                    $item['sale_has_return'] = 'no';
                 }
+                $category_codes = $Sale->details->pluck('product.category.code')->unique()->filter()->values();
+
+                $item['category_codes'] = $category_codes;
+                // Aggregate unique category names of products in the sale details
+                $categories = $Sale->details->pluck('product.category.name')->unique()->filter()->values()->all();
+                $item['categories'] = implode(', ', $categories);
+
+                // Calculate total scanned/released quantity
+                $total_scanned = 0;
+                foreach ($Sale->details as $detail) {
+                    $scans = SaleBarcodeScan::where('sale_detail_id', $detail->id)->count();
+                    $category_code = $detail->product->category->code ?? null;
+                    if ($category_code == '123') {
+                        $total_scanned += floor($scans / 2);
+                    } else {
+                        $total_scanned += $scans;
+                    }
+                }
+                $item['total_scanned_quantity'] = $total_scanned;
+                
+                $item['details'] = $Sale->details->map(function($d) {
+
+                    $name = $d->product_variant_id ? '[' . $d->productVariant->name . '] ' . $d->product->name : $d->product->name;
+
+                    $category_code = $d->product->category->code ?? null;
+
+                    return [
+
+                        'id' => $d->id,
+
+                        'name' => $name,
+
+                        'code' => $d->product->serial_number,
+
+                        'category_code' => $category_code,
+
+                    ];
+
+                });
+
+                $data[] = $item;
             }
-            $item['total_scanned_quantity'] = $total_scanned;
             
-            $item['details'] = $Sale->details->map(function($d) {
+            $stripe_key = config('app.STRIPE_KEY');
+            $customers = client::where('deleted_at', '=', null)->get(['id', 'name']);
+            $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','account_name']);
+            $payment_methods = PaymentMethod::whereNull('deleted_at')->get(['id', 'name']);
 
-                $name = $d->product_variant_id ? '[' . $d->productVariant->name . '] ' . $d->product->name : $d->product->name;
-
-                $category_code = $d->product->category->code ?? null;
-
-                return [
-
-                    'id' => $d->id,
-
-                    'name' => $name,
-
-                    'code' => $d->product->code,
-
-                    'category_code' => $category_code,
-
-                ];
-
-            });
-
-            $data[] = $item;
+        //get warehouses assigned to user
+        $user_auth = auth()->user();
+        if($user_auth->is_all_warehouses){
+            $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
+        }else{
+            $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
+            $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
         }
-        
-        $stripe_key = config('app.STRIPE_KEY');
-        $customers = client::where('deleted_at', '=', null)->get(['id', 'name']);
-        $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','account_name']);
-        $payment_methods = PaymentMethod::whereNull('deleted_at')->get(['id', 'name']);
 
-       //get warehouses assigned to user
-       $user_auth = auth()->user();
-       if($user_auth->is_all_warehouses){
-           $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-       }else{
-           $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-           $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-       }
-
-        return response()->json([
-            'stripe_key' => $stripe_key,
-            'totalRows' => $totalRows,
-            'sales' => $data,
-            'customers' => $customers,
-            'warehouses' => $warehouses,
-            'accounts' => $accounts,
-            'payment_methods' => $payment_methods,
-        ]);
-    }
+            return response()->json([
+                'stripe_key' => $stripe_key,
+                'totalRows' => $totalRows,
+                'sales' => $data,
+                'customers' => $customers,
+                'warehouses' => $warehouses,
+                'accounts' => $accounts,
+                'payment_methods' => $payment_methods,
+            ]);
+        }
 
     //------------- STORE NEW SALE-----------\\
 
@@ -428,39 +428,39 @@ public function index(request $request)
                 ];
 
 
-                if ($order->statut == "completed") {
-                    if ($value['product_variant_id'] !== null) {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->where('product_variant_id', $value['product_variant_id'])
-                            ->first();
+                // if ($order->statut == "completed") {
+                //     if ($value['product_variant_id'] !== null) {
+                //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                //             ->where('warehouse_id', $order->warehouse_id)
+                //             ->where('product_id', $value['product_id'])
+                //             ->where('product_variant_id', $value['product_variant_id'])
+                //             ->first();
 
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
-                            } else {
-                                $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
-                            }
-                            $product_warehouse->save();
-                        }
+                //         if ($unit && $product_warehouse) {
+                //             if ($unit->operator == '/') {
+                //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
+                //             } else {
+                //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
+                //             }
+                //             $product_warehouse->save();
+                //         }
 
-                    } else {
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                            ->where('warehouse_id', $order->warehouse_id)
-                            ->where('product_id', $value['product_id'])
-                            ->first();
+                //     } else {
+                //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                //             ->where('warehouse_id', $order->warehouse_id)
+                //             ->where('product_id', $value['product_id'])
+                //             ->first();
 
-                        if ($unit && $product_warehouse) {
-                            if ($unit->operator == '/') {
-                                $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
-                            } else {
-                                $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
-                            }
-                            $product_warehouse->save();
-                        }
-                    }
-                }
+                //         if ($unit && $product_warehouse) {
+                //             if ($unit->operator == '/') {
+                //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
+                //             } else {
+                //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
+                //             }
+                //             $product_warehouse->save();
+                //         }
+                //     }
+                // }
             }
             SaleDetail::insert($orderDetails);
 
@@ -717,39 +717,39 @@ public function index(request $request)
                         }
                     }
 
-                    if ($current_Sale->statut == "completed") {
+                    // if ($current_Sale->statut == "completed") {
 
-                        if ($value['product_variant_id'] !== null) {
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_Sale->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->where('product_variant_id', $value['product_variant_id'])
-                                ->first();
+                    //     if ($value['product_variant_id'] !== null) {
+                    //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                    //             ->where('warehouse_id', $current_Sale->warehouse_id)
+                    //             ->where('product_id', $value['product_id'])
+                    //             ->where('product_variant_id', $value['product_variant_id'])
+                    //             ->first();
 
-                            if ($product_warehouse && $old_unit) {
-                                if ($old_unit->operator == '/') {
-                                    $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
-                                } else {
-                                    $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
-                                }
-                                $product_warehouse->save();
-                            }
+                    //         if ($product_warehouse && $old_unit) {
+                    //             if ($old_unit->operator == '/') {
+                    //                 $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
+                    //             } else {
+                    //                 $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
+                    //             }
+                    //             $product_warehouse->save();
+                    //         }
 
-                        } else {
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_Sale->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->first();
-                            if ($product_warehouse && $old_unit) {
-                                if ($old_unit->operator == '/') {
-                                    $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
-                                } else {
-                                    $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
-                                }
-                                $product_warehouse->save();
-                            }
-                        }
-                    }
+                    //     } else {
+                    //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                    //             ->where('warehouse_id', $current_Sale->warehouse_id)
+                    //             ->where('product_id', $value['product_id'])
+                    //             ->first();
+                    //         if ($product_warehouse && $old_unit) {
+                    //             if ($old_unit->operator == '/') {
+                    //                 $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
+                    //             } else {
+                    //                 $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
+                    //             }
+                    //             $product_warehouse->save();
+                    //         }
+                    //     }
+                    // }
                     // Delete Detail
                     if (!in_array($old_products_id[$key], $new_products_id)) {
                         $SaleDetail = SaleDetail::findOrFail($value->id);
@@ -771,41 +771,41 @@ public function index(request $request)
                     if($prod_detail['sale_unit_id'] !== null || $get_type_product == 'is_service'){
                         $unit_prod = Unit::where('id', $prod_detail['sale_unit_id'])->first();
 
-                        if ($request['statut'] == "completed") {
+                        // if ($request['statut'] == "completed") {
 
-                            if ($prod_detail['product_variant_id'] !== null) {
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $request->warehouse_id)
-                                    ->where('product_id', $prod_detail['product_id'])
-                                    ->where('product_variant_id', $prod_detail['product_variant_id'])
-                                    ->first();
+                        //     if ($prod_detail['product_variant_id'] !== null) {
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        //             ->where('warehouse_id', $request->warehouse_id)
+                        //             ->where('product_id', $prod_detail['product_id'])
+                        //             ->where('product_variant_id', $prod_detail['product_variant_id'])
+                        //             ->first();
 
-                                if ($product_warehouse && $unit_prod) {
-                                    if ($unit_prod->operator == '/') {
-                                        $product_warehouse->qte -= $prod_detail['quantity'] / $unit_prod->operator_value;
-                                    } else {
-                                        $product_warehouse->qte -= $prod_detail['quantity'] * $unit_prod->operator_value;
-                                    }
-                                    $product_warehouse->save();
-                                }
+                        //         if ($product_warehouse && $unit_prod) {
+                        //             if ($unit_prod->operator == '/') {
+                        //                 $product_warehouse->qte -= $prod_detail['quantity'] / $unit_prod->operator_value;
+                        //             } else {
+                        //                 $product_warehouse->qte -= $prod_detail['quantity'] * $unit_prod->operator_value;
+                        //             }
+                        //             $product_warehouse->save();
+                        //         }
 
-                            } else {
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $request->warehouse_id)
-                                    ->where('product_id', $prod_detail['product_id'])
-                                    ->first();
+                        //     } else {
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        //             ->where('warehouse_id', $request->warehouse_id)
+                        //             ->where('product_id', $prod_detail['product_id'])
+                        //             ->first();
 
-                                if ($product_warehouse && $unit_prod) {
-                                    if ($unit_prod->operator == '/') {
-                                        $product_warehouse->qte -= $prod_detail['quantity'] / $unit_prod->operator_value;
-                                    } else {
-                                        $product_warehouse->qte -= $prod_detail['quantity'] * $unit_prod->operator_value;
-                                    }
-                                    $product_warehouse->save();
-                                }
-                            }
+                        //         if ($product_warehouse && $unit_prod) {
+                        //             if ($unit_prod->operator == '/') {
+                        //                 $product_warehouse->qte -= $prod_detail['quantity'] / $unit_prod->operator_value;
+                        //             } else {
+                        //                 $product_warehouse->qte -= $prod_detail['quantity'] * $unit_prod->operator_value;
+                        //             }
+                        //             $product_warehouse->save();
+                        //         }
+                        //     }
 
-                        }
+                        // }
 
                         $orderDetails['sale_id']      = $id;
                         $orderDetails['date']         = $request['date'];
@@ -905,7 +905,7 @@ public function index(request $request)
              $role = Auth::user()->roles()->first();
              $view_records = Role::findOrFail($role->id)->inRole('record_view');
              $current_Sale = Sale::findOrFail($id);
-             $old_sale_details = SaleDetail::where('sale_id', $id)->get();
+             $old_sale_details = SaleDetail::with('product.category')->where('sale_id', $id)->get();
              $shipment_data =  Shipment::where('sale_id', $id)->first();
 
              if (SaleReturn::where('sale_id', $id)->where('deleted_at', '=', null)->exists()) {
@@ -936,56 +936,42 @@ public function index(request $request)
 
               
 
-                foreach ($old_sale_details as $key => $value) {
-                    
-                    //check if detail has sale_unit_id Or Null
-                    if($value['sale_unit_id'] !== null){
-                        $old_unit = Unit::where('id', $value['sale_unit_id'])->first();
-                    }else{
-                        $product_unit_sale_id = Product::with('unitSale')
-                        ->where('id', $value['product_id'])
+
+
+                // Reverse barcode scans and adjust warehouse quantity
+                foreach ($old_sale_details as $detail) {
+                    $product = Product::with('category')->find($detail->product_id);
+                    $categoryCode = $product->category->code ?? null;
+
+                    // Count all scans for this detail
+                    $scanCount = SaleBarcodeScan::where('sale_detail_id', $detail->id)->count();
+
+                    // Calculate qty that was decremented earlier
+                    if ($categoryCode == '123') {
+                        // 2 scans = 1 qty
+                        $qtyToReverse = floor($scanCount / 2);
+                    } else {
+                        // Normal product: 1 scan = 1 qty
+                        $qtyToReverse = $scanCount;
+                    }
+
+                    // Fetch warehouse product
+                    $warehouseProduct = product_warehouse::whereNull('deleted_at')
+                        ->where('warehouse_id', $current_Sale->warehouse_id)
+                        ->where('product_id', $detail->product_id)
+                        ->when($detail->product_variant_id, function($q) use ($detail) {
+                            return $q->where('product_variant_id', $detail->product_variant_id);
+                        })
                         ->first();
-                        if($product_unit_sale_id['unitSale']){
-                            $old_unit = Unit::where('id', $product_unit_sale_id['unitSale']->id)->first();
-                        }{
-                            $old_unit = NULL;
-                        }
+
+                    // Reverse qty
+                    if ($warehouseProduct && $qtyToReverse > 0) {
+                        $warehouseProduct->qte += $qtyToReverse;
+                        $warehouseProduct->save();
                     }
 
-                    if ($current_Sale->statut == "completed") {
-
-                        if ($value['product_variant_id'] !== null) {
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_Sale->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->where('product_variant_id', $value['product_variant_id'])
-                                ->first();
-
-                            if ($product_warehouse && $old_unit) {
-                                if ($old_unit->operator == '/') {
-                                    $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
-                                } else {
-                                    $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
-                                }
-                                $product_warehouse->save();
-                            }
-
-                        } else {
-                            $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                ->where('warehouse_id', $current_Sale->warehouse_id)
-                                ->where('product_id', $value['product_id'])
-                                ->first();
-                            if ($product_warehouse && $old_unit) {
-                                if ($old_unit->operator == '/') {
-                                    $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
-                                } else {
-                                    $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
-                                }
-                                $product_warehouse->save();
-                            }
-                        }
-                    }
-                    
+                    // Delete scans for this detail
+                    SaleBarcodeScan::where('sale_detail_id', $detail->id)->delete();
                 }
 
                 if($shipment_data){
@@ -1040,9 +1026,11 @@ public function index(request $request)
                 if (SaleReturn::where('sale_id', $sale_id)->where('deleted_at', '=', null)->exists()) {
                     return response()->json(['success' => false , 'Return exist for the Transaction' => false], 403);
                 }else{
-                    $current_Sale = Sale::findOrFail($sale_id);
-                    $old_sale_details = SaleDetail::where('sale_id', $sale_id)->get();
-                    $shipment_data =  Shipment::where('sale_id', $sale_id)->first();
+                $current_Sale = Sale::findOrFail($sale_id);
+
+                $old_sale_details = SaleDetail::with('product.category')->where('sale_id', $sale_id)->get();
+
+                $shipment_data =  Shipment::where('sale_id', $sale_id)->first();
 
                     // Check If User Has Permission view All Records
                     if (!$view_records) {
@@ -1064,9 +1052,45 @@ public function index(request $request)
                             $new_points = max(0, $client->points - $current_Sale->earned_points);
                             $client->update(['points' => $new_points]);
                         }
+                }
+
+                // Reverse barcode scans and adjust warehouse quantity
+                foreach ($old_sale_details as $detail) {
+                    $product = Product::with('category')->find($detail->product_id);
+                    $categoryCode = $product->category->code ?? null;
+
+                    // Count all scans for this detail
+                    $scanCount = SaleBarcodeScan::where('sale_detail_id', $detail->id)->count();
+
+                    // Calculate qty that was decremented earlier
+                    if ($categoryCode == '123') {
+                        // 2 scans = 1 qty
+                        $qtyToReverse = floor($scanCount / 2);
+                    } else {
+                        // Normal product: 1 scan = 1 qty
+                        $qtyToReverse = $scanCount;
                     }
 
-                    foreach ($old_sale_details as $key => $value) {
+                    // Fetch warehouse product
+                    $warehouseProduct = product_warehouse::whereNull('deleted_at')
+                        ->where('warehouse_id', $current_Sale->warehouse_id)
+                        ->where('product_id', $detail->product_id)
+                        ->when($detail->product_variant_id, function($q) use ($detail) {
+                            return $q->where('product_variant_id', $detail->product_variant_id);
+                        })
+                        ->first();
+
+                    // Reverse qty
+                    if ($warehouseProduct && $qtyToReverse > 0) {
+                        $warehouseProduct->qte += $qtyToReverse;
+                        $warehouseProduct->save();
+                    }
+
+                    // Delete scans for this detail
+                    SaleBarcodeScan::where('sale_detail_id', $detail->id)->delete();
+                }
+
+                foreach ($old_sale_details as $key => $value) {
                     
                          //check if detail has sale_unit_id Or Null
                         if($value['sale_unit_id'] !== null){
@@ -1082,39 +1106,39 @@ public function index(request $request)
                             }
                         }
         
-                        if ($current_Sale->statut == "completed") {
+                        // if ($current_Sale->statut == "completed") {
         
-                            if ($value['product_variant_id'] !== null) {
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $current_Sale->warehouse_id)
-                                    ->where('product_id', $value['product_id'])
-                                    ->where('product_variant_id', $value['product_variant_id'])
-                                    ->first();
+                        //     if ($value['product_variant_id'] !== null) {
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        //             ->where('warehouse_id', $current_Sale->warehouse_id)
+                        //             ->where('product_id', $value['product_id'])
+                        //             ->where('product_variant_id', $value['product_variant_id'])
+                        //             ->first();
         
-                                if ($product_warehouse && $old_unit) {
-                                    if ($old_unit->operator == '/') {
-                                        $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
-                                    } else {
-                                        $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
-                                    }
-                                    $product_warehouse->save();
-                                }
+                        //         if ($product_warehouse && $old_unit) {
+                        //             if ($old_unit->operator == '/') {
+                        //                 $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
+                        //             } else {
+                        //                 $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
+                        //             }
+                        //             $product_warehouse->save();
+                        //         }
         
-                            } else {
-                                $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-                                    ->where('warehouse_id', $current_Sale->warehouse_id)
-                                    ->where('product_id', $value['product_id'])
-                                    ->first();
-                                if ($product_warehouse && $old_unit) {
-                                    if ($old_unit->operator == '/') {
-                                        $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
-                                    } else {
-                                        $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
-                                    }
-                                    $product_warehouse->save();
-                                }
-                            }
-                        }
+                        //     } else {
+                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                        //             ->where('warehouse_id', $current_Sale->warehouse_id)
+                        //             ->where('product_id', $value['product_id'])
+                        //             ->first();
+                        //         if ($product_warehouse && $old_unit) {
+                        //             if ($old_unit->operator == '/') {
+                        //                 $product_warehouse->qte += $value['quantity'] / $old_unit->operator_value;
+                        //             } else {
+                        //                 $product_warehouse->qte += $value['quantity'] * $old_unit->operator_value;
+                        //             }
+                        //             $product_warehouse->save();
+                        //         }
+                        //     }
+                        // }
                         
                     }
 

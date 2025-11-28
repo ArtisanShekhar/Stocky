@@ -26,7 +26,7 @@
                     :rules="{required:true , min:3 , max:55}"
                     v-slot="validationContext"
                   >
-                    <b-form-group :label="$t('Name_product') + ' ' + '*'">
+                    <b-form-group :label="'Product Name ' + '*'">
                       <b-form-input
                         :state="getValidationState(validationContext)"
                         aria-describedby="Name-feedback"
@@ -57,7 +57,7 @@
 
 
                 <!-- Barcode Symbology  -->
-                <b-col md="6" class="mb-2">
+                <!-- <b-col md="6" class="mb-2">
                   <validation-provider name="Barcode Symbology" :rules="{ required: true}">
                     <b-form-group
                       slot-scope="{ valid, errors }"
@@ -81,7 +81,7 @@
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
-                </b-col>
+                </b-col> -->
 
                 <!-- Code Product"-->
                 <b-col md="6" class="mb-2">
@@ -118,6 +118,26 @@
                         class="error mt-1"
                         v-if="code_exist !=''"
                       >{{code_exist}}</b-alert>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
+                <!-- Serial Number -->
+                <b-col md="6" class="mb-2">
+                  <validation-provider
+                    name="Serial Number"
+                    :rules="{required:true , min:1 , max:100}"
+                    v-slot="validationContext"
+                  >
+                    <b-form-group :label="$t('Serial Number') + ' ' + '*'">
+                      <b-form-input
+                        :state="getValidationState(validationContext)"
+                        aria-describedby="SerialNumber-feedback"
+                        label="Serial Number"
+                        :placeholder="$t('Enter Serial Number')"
+                        v-model="product.serial_number"
+                      ></b-form-input>
+                      <b-form-invalid-feedback id="SerialNumber-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
                   </validation-provider>
                 </b-col>
@@ -770,6 +790,7 @@ export default {
         points: "",
         code: "",
         Type_barcode: "",
+        serial_number: "",
         cost: "",
         price: "",
         brand_id: "",

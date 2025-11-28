@@ -1,0 +1,4 @@
+- [x] Add serial_number to index method response
+- [x] Add serial_number to Get_Products_Details method response
+- [x] Add serial_number to edit method response
+- [x] Add serial_number assignment in update method

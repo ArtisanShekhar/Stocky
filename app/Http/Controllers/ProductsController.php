@@ -87,6 +87,7 @@ class ProductsController extends BaseController
             $item['code'] = $product->code;
             $item['category'] = $product['category']->name;
             $item['brand'] = $product['brand'] ? $product['brand']->name : 'N/D';
+            $item['serial_number'] = $product->serial_number;
            
 
             $firstimage = explode(',', $product->image);
@@ -204,8 +205,14 @@ class ProductsController extends BaseController
                         return $query->where('deleted_at', '=', null);
                     }),
                 ],
+                'serial_number' => [
+                    'required',
+                    Rule::unique('products')->where(function ($query) {
+                        return $query->where('deleted_at', '=', null);
+                    }),
+                ],
                 'name'         => 'required',
-                'Type_barcode' => 'required',
+                // 'Type_barcode' => 'required',
                 'category_id'  => 'required',
                 'type'         => 'required',
                 'tax_method'   => 'required',
@@ -356,7 +363,7 @@ class ProductsController extends BaseController
                 $Product->type         = $request['type'];
                 $Product->name         = $request['name'];
                 $Product->code         = $request['code'];
-                $Product->Type_barcode = $request['Type_barcode'];
+                $Product->Type_barcode = 'CODE128';
                 $Product->category_id  = $request['category_id'];
                 $Product->brand_id     = $request['brand_id'];
                 $Product->note         = $request['note'];
@@ -426,6 +433,7 @@ class ProductsController extends BaseController
                 $Product->is_imei = $request['is_imei'] == 'true' ? 1 : 0;
                 $Product->not_selling = $request['not_selling'] == 'true' ? 1 : 0;
                 $Product->is_featured = $request['is_featured'] == 'true' ? 1 : 0;
+                $Product->serial_number = $request['serial_number'];
 
                if ($request->hasFile('image')) { 
                     $image = $request->file('image');
@@ -563,6 +571,12 @@ class ProductsController extends BaseController
                     }),
 
                     Rule::unique('product_variants')->ignore($id, 'product_id')->where(function ($query) {
+                        return $query->where('deleted_at', '=', null);
+                    }),
+                ],
+                'serial_number' => [
+                    'required',
+                    Rule::unique('products')->ignore($id)->where(function ($query) {
                         return $query->where('deleted_at', '=', null);
                     }),
                 ],
@@ -722,7 +736,7 @@ class ProductsController extends BaseController
                 $Product->type = $request['type'];
                 $Product->name = $request['name'];
                 $Product->code = $request['code'];
-                $Product->Type_barcode = $request['Type_barcode'];
+                $Product->Type_barcode = 'CODE128';
                 $Product->category_id = $request['category_id'];
                 $Product->brand_id = $request['brand_id'] == 'null' ?Null: $request['brand_id'];
                 $Product->TaxNet = $request['TaxNet'];
@@ -812,7 +826,8 @@ class ProductsController extends BaseController
                 $Product->is_imei = $request['is_imei'] == 'true' ? 1 : 0;
                 $Product->not_selling = $request['not_selling'] == 'true' ? 1 : 0;
                 $Product->is_featured = $request['is_featured'] == 'true' ? 1 : 0;
-                
+                $Product->serial_number = $request['serial_number'];
+
                 // Store Variants Product
                 $oldVariants = ProductVariant::where('product_id', $id)
                     ->where('deleted_at', null)
@@ -1149,7 +1164,7 @@ class ProductsController extends BaseController
         $item['has_guarantee']    = (bool) $Product->has_guarantee;
         $item['guarantee_period'] = $Product->guarantee_period;
         $item['guarantee_unit']   = $Product->guarantee_unit;
-
+        $item['serial_number']    = $Product->serial_number;
 
         if($Product->type == 'is_single'){
             $item['type_name']  = 'Single';
@@ -1806,6 +1821,7 @@ class ProductsController extends BaseController
         $item['is_imei'] = $Product->is_imei?true:false;
         $item['not_selling'] = $Product->not_selling?true:false;
         $item['is_featured'] = $Product->is_featured?true:false;
+        $item['serial_number'] = $Product->serial_number;
 
         $data = $item;
         $categories = Category::where('deleted_at', null)->get(['id', 'name']);

@@ -14,7 +14,7 @@ class Product extends Model
         'stock_alert', 'category_id', 'sub_category_id', 'is_variant','is_imei',
         'tax_method', 'image', 'brand_id', 'is_active', 'note','type',
         'warranty_period', 'warranty_unit', 'warranty_terms',
-        'has_guarantee', 'guarantee_period', 'guarantee_unit','points','discount', 'discount_method','is_featured'
+        'has_guarantee', 'guarantee_period', 'guarantee_unit','points','discount', 'discount_method','is_featured', 'serial_number'
     ];
 
     protected $casts = [
