@@ -520,15 +520,7 @@
       </b-modal>
     </validation-observer>
 
-  <b-modal hide-footer id="purchase_barcode_scanner" size="md" title="Barcode Scanner">
-      <qrcode-scanner
-        :qrbox="250"
-        :fps="10"
-        style="width: 100%; height: calc(100vh - 56px);"
-        @result="onPurchaseScan"
-      />
-    </b-modal>
-    <!-- Modal Scan Barcode -->
+
 <b-modal 
   hide-footer 
   size="lg"
@@ -559,14 +551,13 @@
                 <div class="input-group-prepend">
                   <img src="/assets_setup/scan.png"
                        alt="Scan"
-                       @click="startSingleScan(item)"
                        style="height: 38px; padding:6px; cursor:pointer;">
                 </div>
 
                 <b-form-input
                   v-model="item.scan_barcode"
-                  readonly
-                  :placeholder="'Scan barcode of ' + item.name"
+                  :placeholder="'Click here to scan barcode of ' + item.name"
+                  @input="handleBarcodeInput(item)"
                 ></b-form-input>
 
               </div>
@@ -1560,13 +1551,12 @@ export default {
       this.scan_error = "";
       console.log("Row Data:", row);
       // Build list for all products
-      this.scan_details = row.details.map((d, index) => {
-      const category = row.category_codes[index] ?? null;
+      this.scan_details = row.details.map((d) => {
         return {
           detail_id: d.id,
           name: d.name,
           code: d.code,
-          category_id: category,
+          category_id: d.category_code,  // FIXED
           scan_barcode: "",
           scan_type: null,
         };
@@ -1618,6 +1608,7 @@ export default {
 
         this.scanning = false;
         this.makeToast("success", "Barcode scanned successfully", "Success");
+        item.scan_barcode = ""; // Clear the input after successful scan
         this.Get_Purchases(this.serverParams.page);
 
       } catch (error) {
@@ -1633,6 +1624,21 @@ export default {
         console.log("Error barcode:", msg);
 
         this.makeToast("danger", msg, "Failed");
+        item.scan_barcode = ""; // Clear the input after error as well
+      }
+    },
+
+    //----------------------------------------- Handle Barcode Input -------------------------------\\
+    handleBarcodeInput(item) {
+      if (item.scan_barcode && item.scan_barcode.trim() !== "") {
+        // Default indoor type for category=123 if user hasn't selected
+        if (item.category_id === "123" && !item.scan_type) {
+          item.scan_type = "indoor";
+        }
+        // Auto-submit for that product
+        setTimeout(() => {
+          this.Submit_Single_Scan(item);
+        }, 150);
       }
     }
 

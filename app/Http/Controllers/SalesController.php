@@ -101,7 +101,7 @@ class SalesController extends BaseController
         $categoryCode = $detail->product->category->code ?? null;
 
         // Must be released
-        if (!in_array($sale->statut, ['released'])) {
+        if (!in_array($sale->statut, ['completed'])) {
             return response()->json(['success' => false, 'message' => 'Sale must be released to scan barcodes.'], 400);
         }
 
@@ -328,7 +328,7 @@ class SalesController extends BaseController
 
                     $category_code = $d->product->category->code ?? null;
 
-                    return [
+                    $detail = [
 
                         'id' => $d->id,
 
@@ -339,6 +339,20 @@ class SalesController extends BaseController
                         'category_code' => $category_code,
 
                     ];
+
+                    if ($category_code == '123') {
+
+                        $detail['indoor_scans'] = SaleBarcodeScan::where('sale_detail_id', $d->id)->where('type', 'indoor')->count();
+
+                        $detail['outdoor_scans'] = SaleBarcodeScan::where('sale_detail_id', $d->id)->where('type', 'outdoor')->count();
+
+                    } else {
+
+                        $detail['total_scans'] = SaleBarcodeScan::where('sale_detail_id', $d->id)->count();
+
+                    }
+
+                    return $detail;
 
                 });
 

@@ -847,14 +847,14 @@
         {{$t('print')}}
       </button>
     </b-modal>
-     <b-modal hide-footer id="sale_barcode_scanner" size="md" title="Barcode Scanner">
+     <!-- <b-modal hide-footer id="sale_barcode_scanner" size="md" title="Barcode Scanner">
       <qrcode-scanner
         :qrbox="250"
         :fps="10"
         style="width: 100%; height: calc(100vh - 56px);"
         @result="onPurchaseScan"
       />
-    </b-modal>
+    </b-modal> -->
     <!-- Modal Scan Barcode -->
 <b-modal 
   hide-footer 
@@ -886,14 +886,13 @@
                 <div class="input-group-prepend">
                   <img src="/assets_setup/scan.png"
                        alt="Scan"
-                       @click="startSingleScan(item)"
                        style="height: 38px; padding:6px; cursor:pointer;">
                 </div>
 
                 <b-form-input
                   v-model="item.scan_barcode"
-                  readonly
-                  :placeholder="'Scan barcode of ' + item.name"
+                  @input="handleBarcodeInput(item)"
+                  :placeholder="'Scan barcode for ' + item.name"
                 ></b-form-input>
 
               </div>
@@ -1174,17 +1173,16 @@ data() {
       this.scan_error = "";
       console.log("Row Data:", row);
       // Build list for all products
-      this.scan_details = row.details.map((d, index) => {
-      const category = row.category_codes[index] ?? null;
-        return {
-          detail_id: d.id,
-          name: d.name,
-          code: d.code,
-          category_id: category,
-          scan_barcode: "",
-          scan_type: null,
-        };
-      });
+        this.scan_details = row.details.map((d) => {
+          return {
+            detail_id: d.id,
+            name: d.name,
+            code: d.code,
+            category_id: d.category_code,  // FIXED
+            scan_barcode: "",
+            scan_type: null,
+          };
+        });
       this.currentScanItem = null;
       this.$bvModal.show("Sale_Barcode_Modal");
     }
@@ -1215,7 +1213,22 @@ data() {
     }
     ,
 
-        //----------------------------------------- Submit Scan Barcode -------------------------------\\
+    //----------------------------------------- Handle Barcode Input -------------------------------\\
+    handleBarcodeInput(item) {
+      const barcode = item.scan_barcode;
+      if (barcode) {
+        // Default 'indoor' type for category 123 if not selected
+        if (item.category_id === '123' && !item.scan_type) {
+          item.scan_type = 'indoor';
+        }
+        // Auto-submit after 150ms
+        setTimeout(() => {
+          this.Submit_Single_Scan(item);
+        }, 150);
+      }
+    },
+
+    //----------------------------------------- Submit Scan Barcode -------------------------------\\
     async Submit_Single_Scan(item) {
       this.scan_error = "";
       this.scanning = true;
@@ -1232,6 +1245,7 @@ data() {
 
         this.scanning = false;
         this.makeToast("success", "Barcode scanned successfully", "Success");
+        item.scan_barcode = ""; // Clear the input after successful scan
         this.Get_Sales(this.serverParams.page);
 
       } catch (error) {
@@ -1247,6 +1261,7 @@ data() {
         console.log("Error barcode:", msg);
 
         this.makeToast("danger", msg, "Failed");
+        item.scan_barcode = ""; // Clear the input after error as well
       }
     },
      async Selected_PaymentMethod(value) {

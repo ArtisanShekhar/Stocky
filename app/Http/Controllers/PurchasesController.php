@@ -355,11 +355,19 @@ class PurchasesController extends BaseController
 
             // Include details for scanning
 
-            $item['details'] = $Purchase->details->map(function($d) {
+            $item['details'] = $Purchase->details->map(function($d) use ($scans) {
 
                 $name = $d->product_variant_id ? '[' . $d->productVariant->name . '] ' . $d->product->name : $d->product->name;
 
                 $category_code = $d->product->category->code ?? null;
+
+                $detail_scans = $scans->where('purchase_detail_id', $d->id);
+
+                $indoor_scans = $category_code == '123' ? $detail_scans->where('type', 'indoor')->count() : 0;
+
+                $outdoor_scans = $category_code == '123' ? $detail_scans->where('type', 'outdoor')->count() : 0;
+
+                $total_scans = $category_code != '123' ? $detail_scans->where('type', null)->count() : 0;
 
                 return [
 
@@ -370,6 +378,12 @@ class PurchasesController extends BaseController
                     'code' => $d->product->serial_number,
 
                     'category_code' => $category_code,
+
+                    'indoor_scans' => $indoor_scans,
+
+                    'outdoor_scans' => $outdoor_scans,
+
+                    'total_scans' => $total_scans,
 
                 ];
 
