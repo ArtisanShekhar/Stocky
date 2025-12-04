@@ -919,7 +919,7 @@
             <tr>
               <th>S.No</th>
               <th>Description</th>
-              <th>HSN</th>
+              <th>HSN/SAC</th>
               <th>GST%</th>
               <th>Qty</th>
               <th>Rate</th>
@@ -938,7 +938,7 @@
                 </small>
               </td>
               <td style="text-align:center;">
-                <!-- {{ detail_invoice.product.hsn }} -->
+                {{ detail_invoice.hsn_number }}
               </td>
               <td style="text-align:center;">{{ formatNumber(detail_invoice.tax_rate,2) }}</td>
               <td style="text-align:center;">{{ formatNumber(detail_invoice.quantity,2) }}</td>

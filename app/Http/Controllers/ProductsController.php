@@ -212,7 +212,7 @@ class ProductsController extends BaseController
                     }),
                 ],
                 'name'         => 'required',
-                // 'Type_barcode' => 'required',
+                'hsn_number' => 'required',
                 'category_id'  => 'required',
                 'type'         => 'required',
                 'tax_method'   => 'required',
@@ -434,6 +434,7 @@ class ProductsController extends BaseController
                 $Product->not_selling = $request['not_selling'] == 'true' ? 1 : 0;
                 $Product->is_featured = $request['is_featured'] == 'true' ? 1 : 0;
                 $Product->serial_number = $request['serial_number'];
+                $Product->hsn_number = $request['hsn_number'];
 
                if ($request->hasFile('image')) { 
                     $image = $request->file('image');
@@ -581,6 +582,7 @@ class ProductsController extends BaseController
                     }),
                 ],
                 'name'        => 'required',
+                'hsn_number'        => 'required',
                 'category_id' => 'required',
                 'tax_method'  => 'required',
                 'discount_method'  => 'required',
@@ -827,6 +829,7 @@ class ProductsController extends BaseController
                 $Product->not_selling = $request['not_selling'] == 'true' ? 1 : 0;
                 $Product->is_featured = $request['is_featured'] == 'true' ? 1 : 0;
                 $Product->serial_number = $request['serial_number'];
+                $Product->hsn_number = $request['hsn_number'];
 
                 // Store Variants Product
                 $oldVariants = ProductVariant::where('product_id', $id)
@@ -1165,6 +1168,7 @@ class ProductsController extends BaseController
         $item['guarantee_period'] = $Product->guarantee_period;
         $item['guarantee_unit']   = $Product->guarantee_unit;
         $item['serial_number']    = $Product->serial_number;
+        $item['hsn_number']    = $Product->hsn_number;
 
         if($Product->type == 'is_single'){
             $item['type_name']  = 'Single';
@@ -1822,6 +1826,7 @@ class ProductsController extends BaseController
         $item['not_selling'] = $Product->not_selling?true:false;
         $item['is_featured'] = $Product->is_featured?true:false;
         $item['serial_number'] = $Product->serial_number;
+        $item['hsn_number'] = $Product->hsn_number;
 
         $data = $item;
         $categories = Category::where('deleted_at', null)->get(['id', 'name']);

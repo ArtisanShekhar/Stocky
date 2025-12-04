@@ -142,6 +142,26 @@
                   </validation-provider>
                 </b-col>
 
+                <!-- HSN Number -->
+                <b-col md="6" class="mb-2">
+                  <validation-provider
+                    name="HSN Number"
+                    :rules="{ min:1 , max:50}"
+                    v-slot="validationContext"
+                  >
+                    <b-form-group :label="$t('HSN/SAC Number')">
+                      <b-form-input
+                        :state="getValidationState(validationContext)"
+                        aria-describedby="HSNNumber-feedback"
+                        label="HSN Number"
+                        :placeholder="$t('Enter HSN Number')"
+                        v-model="product.hsn_number"
+                      ></b-form-input>
+                      <b-form-invalid-feedback id="HSNNumber-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
+                    </b-form-group>
+                  </validation-provider>
+                </b-col>
+
                 <!-- Category -->
                 <b-col md="6" class="mb-2">
                   <validation-provider name="category" :rules="{ required: true}">
@@ -800,6 +820,7 @@ export default {
         name: "",
         code: "",
         serial_number: "",
+        hsn_number: "",
         points: "",
         Type_barcode: "CODE128",
         cost: "",

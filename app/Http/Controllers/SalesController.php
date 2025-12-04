@@ -1441,6 +1441,7 @@ class SalesController extends BaseController
 
             $data['is_imei'] = $detail['product']['is_imei'];
             $data['imei_number'] = $detail->imei_number;
+            $data['hsn_number'] = $detail->product->hsn_number;
 
             $details[] = $data;
         }
