@@ -1,125 +1,61 @@
 <?php
 
-
-
 namespace App\Http\Controllers;
-
-
-
 use Twilio\Rest\Client as Client_Twilio;
-
 use GuzzleHttp\Client as Client_guzzle;
-
 use GuzzleHttp\Client as Client_termi;
-
 use App\Models\SMSMessage;
-
 use Infobip\Api\SendSmsApi;
-
 use Infobip\Configuration;
-
 use Infobip\Model\SmsAdvancedTextualRequest;
-
 use Infobip\Model\SmsDestination;
-
 use Infobip\Model\SmsTextualMessage;
-
 use Illuminate\Support\Str;
-
 use App\Mail\CustomEmail;
-
 use App\Models\EmailMessage;
-
 use App\Models\Account;
-
 use App\Models\PaymentMethod;
-
-
-
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Support\Facades\Mail;
-
 use App\Mail\PurchaseMail;
-
 use App\Models\PaymentPurchase;
-
 use App\Models\Product;
-
 use App\Models\Unit;
-
 use App\Models\ProductVariant;
-
 use App\Models\product_warehouse;
-
 use App\Models\PurchaseReturn;
-
 use App\Models\PurchaseReturnDetails;
-
 use App\Models\Provider;
-
 use App\Models\Purchase;
-
 use App\Models\PurchaseBarcodeScan;
-
 use App\Models\PurchaseDetail;
-
 use App\Models\Role;
-
 use App\Models\Setting;
-
 use App\Models\Warehouse;
-
 use App\Models\User;
-
 use App\Models\UserWarehouse;
-
 use App\utils\helpers;
-
 use Carbon\Carbon;
-
 use App\Models\sms_gateway;
-
 use DB;
-
 use PDF;
-
 use ArPHP\I18N\Arabic;
-
-
-
 class PurchasesController extends BaseController
-
 {
-
-
-
     //------------- Show ALL Purchases ----------\\
-
-
-
     public function index(request $request)
-
     {
-
-        $this->authorizeForUser($request->user('api'), 'view', Purchase::class);
-
-        $role = Auth::user()->roles()->first();
-
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
-
+        $this->authorizeForUser($request->user("api"), "view", Purchase::class);
+        $role = Auth::user()
+            ->roles()
+            ->first();
+        $view_records = Role::findOrFail($role->id)->inRole("record_view");
         // How many items do you want to display.
-
         $perPage = $request->limit;
-
-        $pageStart = \Request::get('page', 1);
-
+        $pageStart = \Request::get("page", 1);
         // Start displaying items from this number;
-
-        $offSet = ($pageStart * $perPage) - $perPage;
-
+        $offSet = $pageStart * $perPage - $perPage;
         $order = $request->SortField;
 
         $dir = $request->SortType;
@@ -128,115 +64,95 @@ class PurchasesController extends BaseController
 
         // Filter fields With Params to retrieve
 
-        $param = array(
-
-            0 => 'like',
-
-            1 => 'like',
-
-            2 => '=',
-
-            3 => 'like',
-
-            4 => '=',
-
-            5 => '=',
-
-        );
-
-        $columns = array(
-
-            0 => 'Ref',
-
-            1 => 'statut',
-
-            2 => 'provider_id',
-
-            3 => 'payment_statut',
-
-            4 => 'warehouse_id',
-
-            5 => 'date',
-
-        );
-
-        $data = array();
-
+        $param = [
+            0 => "like",
+            1 => "like",
+            2 => "=",
+            3 => "like",
+            4 => "=",
+            5 => "=",
+        ];
+        $columns = [
+            0 => "Ref",
+            1 => "statut",
+            2 => "provider_id",
+            3 => "payment_statut",
+            4 => "warehouse_id",
+            5 => "date",
+        ];
+        $data = [];
         $total = 0;
 
-
-
         // Check If User Has Permission View  All Records
+        $Purchases = Purchase::with(
+            "facture",
+            "provider",
+            "warehouse",
+            "details.product.category"
+        )
 
-        $Purchases = Purchase::with('facture', 'provider', 'warehouse', 'details.product.category')
-
-            ->where('deleted_at', '=', null)
+            ->where("deleted_at", "=", null)
 
             ->where(function ($query) use ($view_records) {
-
                 if (!$view_records) {
-
-                    return $query->where('user_id', '=', Auth::user()->id);
-
+                    return $query->where("user_id", "=", Auth::user()->id);
                 }
-
             });
-
-
 
         //Multiple Filter
 
-        $Filtred = $helpers->filter($Purchases, $columns, $param, $request)
+        $Filtred = $helpers
+            ->filter($Purchases, $columns, $param, $request)
 
-        // Search With Multiple Param
+            // Search With Multiple Param
 
             ->where(function ($query) use ($request) {
+                return $query->when($request->filled("search"), function (
+                    $query
+                ) use ($request) {
+                    return $query
+                        ->where("Ref", "LIKE", "%{$request->search}%")
 
-                return $query->when($request->filled('search'), function ($query) use ($request) {
+                        ->orWhere("statut", "LIKE", "%{$request->search}%")
 
-                    return $query->where('Ref', 'LIKE', "%{$request->search}%")
+                        ->orWhere("GrandTotal", $request->search)
 
-                        ->orWhere('statut', 'LIKE', "%{$request->search}%")
-
-                        ->orWhere('GrandTotal', $request->search)
-
-                        ->orWhere('payment_statut', 'like', "$request->search")
+                        ->orWhere("payment_statut", "like", "$request->search")
 
                         ->orWhere(function ($query) use ($request) {
-
-                            return $query->whereHas('provider', function ($q) use ($request) {
-
-                                $q->where('name', 'LIKE', "%{$request->search}%");
-
+                            return $query->whereHas("provider", function (
+                                $q
+                            ) use ($request) {
+                                $q->where(
+                                    "name",
+                                    "LIKE",
+                                    "%{$request->search}%"
+                                );
                             });
-
                         })
 
                         ->orWhere(function ($query) use ($request) {
-
-                            return $query->whereHas('warehouse', function ($q) use ($request) {
-
-                                $q->where('name', 'LIKE', "%{$request->search}%");
-
+                            return $query->whereHas("warehouse", function (
+                                $q
+                            ) use ($request) {
+                                $q->where(
+                                    "name",
+                                    "LIKE",
+                                    "%{$request->search}%"
+                                );
                             });
-
                         });
-
                 });
-
             });
-
-
 
         $totalRows = $Filtred->count();
 
-        if($perPage == "-1"){
-
+        if ($perPage == "-1") {
             $perPage = $totalRows;
-
         }
 
-        $Purchases = $Filtred->offset($offSet)
+        $Purchases = $Filtred
+            ->offset($offSet)
 
             ->limit($perPage)
 
@@ -244,254 +160,274 @@ class PurchasesController extends BaseController
 
             ->get();
 
-
-
         foreach ($Purchases as $Purchase) {
+            $item["id"] = $Purchase->id;
 
+            $item["date"] = $Purchase["date"] . " " . $Purchase["time"];
 
+            $item["Ref"] = $Purchase->Ref;
 
-            $item['id'] = $Purchase->id;
+            $item["warehouse_name"] = $Purchase["warehouse"]->name;
 
-            $item['date'] = $Purchase['date'] . ' ' . $Purchase['time'];
+            $item["discount"] = $Purchase->discount;
 
-            $item['Ref'] = $Purchase->Ref;
+            $item["shipping"] = $Purchase->shipping;
 
-            $item['warehouse_name'] = $Purchase['warehouse']->name;
+            $item["statut"] = $Purchase->statut;
 
-            $item['discount'] = $Purchase->discount;
+            $item["provider_id"] = $Purchase["provider"]->id;
 
-            $item['shipping'] = $Purchase->shipping;
+            $item["provider_name"] = $Purchase["provider"]->name;
 
-            $item['statut'] = $Purchase->statut;
+            $item["provider_email"] = $Purchase["provider"]->email;
 
-            $item['provider_id'] = $Purchase['provider']->id;
+            $item["provider_tele"] = $Purchase["provider"]->phone;
 
-            $item['provider_name'] = $Purchase['provider']->name;
+            $item["provider_code"] = $Purchase["provider"]->code;
 
-            $item['provider_email'] = $Purchase['provider']->email;
+            $item["provider_adr"] = $Purchase["provider"]->adresse;
 
-            $item['provider_tele'] = $Purchase['provider']->phone;
+            $item["GrandTotal"] = number_format(
+                $Purchase->GrandTotal,
+                2,
+                ".",
+                ""
+            );
 
-            $item['provider_code'] = $Purchase['provider']->code;
+            $item["paid_amount"] = number_format(
+                $Purchase->paid_amount,
+                2,
+                ".",
+                ""
+            );
 
-            $item['provider_adr'] = $Purchase['provider']->adresse;
+            $item["due"] = number_format(
+                $item["GrandTotal"] - $item["paid_amount"],
+                2,
+                ".",
+                ""
+            );
 
-            $item['GrandTotal'] = number_format($Purchase->GrandTotal, 2, '.', '');
-
-            $item['paid_amount'] = number_format($Purchase->paid_amount, 2, '.', '');
-
-            $item['due'] = number_format($item['GrandTotal'] - $item['paid_amount'], 2, '.', '');
-
-            $item['payment_status'] = $Purchase->payment_statut;
-
-
+            $item["payment_status"] = $Purchase->payment_statut;
 
             // Calculate total quantity from details
 
-            $item['total_quantity'] = $Purchase->details->sum('quantity');
-
-
+            $item["total_quantity"] = $Purchase->details->sum("quantity");
 
             // Get unique categories
 
-            $categories = $Purchase->details->pluck('product.category.name')->unique()->filter()->implode(', ');
+            $categories = $Purchase->details
+                ->pluck("product.category.name")
+                ->unique()
+                ->filter()
+                ->implode(", ");
 
-            $item['categories'] = $categories ?: '';
-
-
+            $item["categories"] = $categories ?: "";
 
             // Get unique category codes
 
-            $category_codes = $Purchase->details->pluck('product.category.code')->unique()->filter()->values();
+            $category_codes = $Purchase->details
+                ->pluck("product.category.code")
+                ->unique()
+                ->filter()
+                ->values();
 
-        $item['category_codes'] = $category_codes;
+            $item["category_codes"] = $category_codes;
 
+            // Check if any detail has category code 123
 
+            $item["has_cat_123"] = $Purchase->details
+                ->pluck("product.category.code")
+                ->contains("123");
 
-        // Check if any detail has category code 123
+            $detailIDs = $Purchase->details->pluck("id");
 
-        $item['has_cat_123'] = $Purchase->details->pluck('product.category.code')->contains('123');
+            $scans = PurchaseBarcodeScan::whereIn(
+                "purchase_detail_id",
+                $detailIDs
+            )->get();
 
+            $total_cat123_received = 0;
 
+            $total_normal_received = 0;
 
+            foreach ($Purchase->details as $index => $detail) {
+                $category = $detail->product->category->code ?? null;
 
-        $detailIDs = $Purchase->details->pluck('id');
+                // All scans for this detail
 
-        $scans = PurchaseBarcodeScan::whereIn('purchase_detail_id', $detailIDs)->get();
-        $total_cat123_received = 0;
-        $total_normal_received = 0;
+                $detail_scans = $scans->where(
+                    "purchase_detail_id",
+                    $detail->id
+                );
 
-        foreach ($Purchase->details as $index => $detail) {
+                if ($category == "123") {
+                    // Only indoor + outdoor
 
-        $category = $detail->product->category->code ?? null;
-            // All scans for this detail
-            $detail_scans = $scans->where('purchase_detail_id', $detail->id);
+                    $indoor_count = $detail_scans
+                        ->where("type", "indoor")
+                        ->count();
 
-            if ($category == '123') {
+                    $outdoor_count = $detail_scans
+                        ->where("type", "outdoor")
+                        ->count();
 
-                // Only indoor + outdoor
-                 $indoor_count  = $detail_scans->where('type', 'indoor')->count();
-                 $outdoor_count = $detail_scans->where('type', 'outdoor')->count();
+                    $valid_scans = $indoor_count + $outdoor_count;
 
-                $valid_scans = $indoor_count + $outdoor_count;
+                    // Pair rule: 2 scans = 1 unit
 
-                // Pair rule: 2 scans = 1 unit
-                $units = floor($valid_scans / 2);
+                    $units = floor($valid_scans / 2);
 
-                $total_cat123_received += $units;
+                    $total_cat123_received += $units;
+                } else {
+                    // Only null scans count for normal items
 
-            } else {
+                    $units = $detail_scans->where("type", null)->count();
 
-                // Only null scans count for normal items
-                $units = $detail_scans->where('type', null)->count();
-
-                $total_normal_received += $units;
+                    $total_normal_received += $units;
+                }
             }
-        }
-        $item['total_received_quantity'] = $total_cat123_received + $total_normal_received;
 
-
-
+            $item["total_received_quantity"] =
+                $total_cat123_received + $total_normal_received;
 
             // Include details for scanning
 
-            $item['details'] = $Purchase->details->map(function($d) use ($scans) {
-
-                $name = $d->product_variant_id ? '[' . $d->productVariant->name . '] ' . $d->product->name : $d->product->name;
+            $item["details"] = $Purchase->details->map(function ($d) use (
+                $scans
+            ) {
+                $name = $d->product_variant_id
+                    ? "[" . $d->productVariant->name . "] " . $d->product->name
+                    : $d->product->name;
 
                 $category_code = $d->product->category->code ?? null;
 
-                $detail_scans = $scans->where('purchase_detail_id', $d->id);
+                $detail_scans = $scans->where("purchase_detail_id", $d->id);
 
-                $indoor_scans = $category_code == '123' ? $detail_scans->where('type', 'indoor')->count() : 0;
+                $indoor_scans =
+                    $category_code == "123"
+                        ? $detail_scans->where("type", "indoor")->count()
+                        : 0;
 
-                $outdoor_scans = $category_code == '123' ? $detail_scans->where('type', 'outdoor')->count() : 0;
+                $outdoor_scans =
+                    $category_code == "123"
+                        ? $detail_scans->where("type", "outdoor")->count()
+                        : 0;
 
-                $total_scans = $category_code != '123' ? $detail_scans->where('type', null)->count() : 0;
+                $total_scans =
+                    $category_code != "123"
+                        ? $detail_scans->where("type", null)->count()
+                        : 0;
 
                 return [
+                    "id" => $d->id,
 
-                    'id' => $d->id,
+                    "name" => $name,
 
-                    'name' => $name,
+                    "code" => $d->product->serial_number,
 
-                    'code' => $d->product->serial_number,
+                    "category_code" => $category_code,
 
-                    'category_code' => $category_code,
+                    "indoor_scans" => $indoor_scans,
 
-                    'indoor_scans' => $indoor_scans,
+                    "outdoor_scans" => $outdoor_scans,
 
-                    'outdoor_scans' => $outdoor_scans,
-
-                    'total_scans' => $total_scans,
-
+                    "total_scans" => $total_scans,
                 ];
-
             });
 
+            if (
+                PurchaseReturn::where("purchase_id", $Purchase["id"])
+                    ->where("deleted_at", "=", null)
+                    ->exists()
+            ) {
+                $PurchaseReturn = PurchaseReturn::where(
+                    "purchase_id",
+                    $Purchase["id"]
+                )
+                    ->where("deleted_at", "=", null)
+                    ->first();
 
+                $item["purchasereturn_id"] = $PurchaseReturn->id;
 
-        if (PurchaseReturn::where('purchase_id', $Purchase['id'])->where('deleted_at', '=', null)->exists()) {
+                $item["purchase_has_return"] = "yes";
+            } else {
+                $item["purchase_has_return"] = "no";
+            }
 
-            $PurchaseReturn = PurchaseReturn::where('purchase_id', $Purchase['id'])->where('deleted_at', '=', null)->first();
-
-            $item['purchasereturn_id'] = $PurchaseReturn->id;
-
-            $item['purchase_has_return'] = 'yes';
-
-        }else{
-
-            $item['purchase_has_return'] = 'no';
-
+            $data[] = $item;
         }
-
-
-
-        $data[] = $item;
-
-        }
-
-
 
         // echo'<pre>';
 
         // print_r($data);die;
 
-        $suppliers = provider::where('deleted_at', '=', null)->get(['id', 'name']);
-
-        $accounts = Account::where('deleted_at', '=', null)->orderBy('id', 'desc')->get(['id','account_name']);
-
-
-
-         //get warehouses assigned to user
-
-         $user_auth = auth()->user();
-
-         if($user_auth->is_all_warehouses){
-
-             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-
-         }else{
-
-             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-
-             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-
-         } 
-
-
-
-        $payment_methods = PaymentMethod::whereNull('deleted_at')->get(['id', 'name']);
-
-
-
-        return response()->json([
-
-            'totalRows' => $totalRows,
-
-            'purchases' => $data,
-
-            'suppliers' => $suppliers,
-
-            'warehouses' => $warehouses,
-
-            'accounts' => $accounts,
-
-            'payment_methods' => $payment_methods,
-
+        $suppliers = provider::where("deleted_at", "=", null)->get([
+            "id",
+            "name",
         ]);
 
+        $accounts = Account::where("deleted_at", "=", null)
+            ->orderBy("id", "desc")
+            ->get(["id", "account_name"]);
+
+        //get warehouses assigned to user
+
+        $user_auth = auth()->user();
+
+        if ($user_auth->is_all_warehouses) {
+            $warehouses = Warehouse::where("deleted_at", "=", null)->get([
+                "id",
+                "name",
+            ]);
+        } else {
+            $warehouses_id = UserWarehouse::where("user_id", $user_auth->id)
+                ->pluck("warehouse_id")
+                ->toArray();
+
+            $warehouses = Warehouse::where("deleted_at", "=", null)
+                ->whereIn("id", $warehouses_id)
+                ->get(["id", "name"]);
+        }
+
+        $payment_methods = PaymentMethod::whereNull("deleted_at")->get([
+            "id",
+            "name",
+        ]);
+
+        return response()->json([
+            "totalRows" => $totalRows,
+
+            "purchases" => $data,
+
+            "suppliers" => $suppliers,
+
+            "warehouses" => $warehouses,
+
+            "accounts" => $accounts,
+
+            "payment_methods" => $payment_methods,
+        ]);
     }
-
-
 
     //------ Store new Purchase -------------\\
 
-
-
     public function store(Request $request)
-
     {
-
-        $this->authorizeForUser($request->user('api'), 'create', Purchase::class);
-
-
+        $this->authorizeForUser(
+            $request->user("api"),
+            "create",
+            Purchase::class
+        );
 
         request()->validate([
+            "supplier_id" => "required",
 
-            'supplier_id' => 'required',
-
-            'warehouse_id' => 'required',
-
+            "warehouse_id" => "required",
         ]);
 
-
-
         \DB::transaction(function () use ($request) {
-
-            $order = new Purchase;
-
-
+            $order = new Purchase();
 
             $order->date = $request->date;
 
@@ -515,53 +451,44 @@ class PurchasesController extends BaseController
 
             $order->statut = $request->statut;
 
-            $order->payment_statut = 'unpaid';
+            $order->payment_statut = "unpaid";
 
             $order->notes = $request->notes;
 
             $order->user_id = Auth::user()->id;
 
-
-
             $order->save();
 
-
-
-            $data = $request['details'];
+            $data = $request["details"];
 
             foreach ($data as $key => $value) {
-
-                $unit = Unit::where('id', $value['purchase_unit_id'])->first();
+                $unit = Unit::where("id", $value["purchase_unit_id"])->first();
 
                 $orderDetails[] = [
+                    "purchase_id" => $order->id,
 
-                    'purchase_id' => $order->id,
+                    "quantity" => $value["quantity"],
 
-                    'quantity' => $value['quantity'],
+                    "cost" => $value["Unit_cost"],
 
-                    'cost' => $value['Unit_cost'],
+                    "purchase_unit_id" => $value["purchase_unit_id"],
 
-                    'purchase_unit_id' =>  $value['purchase_unit_id'],
+                    "TaxNet" => $value["tax_percent"],
 
-                    'TaxNet' => $value['tax_percent'],
+                    "tax_method" => $value["tax_method"],
 
-                    'tax_method' => $value['tax_method'],
+                    "discount" => $value["discount"],
 
-                    'discount' => $value['discount'],
+                    "discount_method" => $value["discount_Method"],
 
-                    'discount_method' => $value['discount_Method'],
+                    "product_id" => $value["product_id"],
 
-                    'product_id' => $value['product_id'],
+                    "product_variant_id" => $value["product_variant_id"],
 
-                    'product_variant_id' => $value['product_variant_id'],
+                    "total" => $value["subtotal"],
 
-                    'total' => $value['subtotal'],
-
-                    'imei_number' => $value['imei_number'],
-
+                    "imei_number" => $value["imei_number"],
                 ];
-
-
 
                 // if ($order->statut == "received") {
 
@@ -576,8 +503,6 @@ class PurchasesController extends BaseController
                 //             ->where('product_variant_id', $value['product_variant_id'])
 
                 //             ->first();
-
-
 
                 //         if ($unit && $product_warehouse) {
 
@@ -595,8 +520,6 @@ class PurchasesController extends BaseController
 
                 //         }
 
-
-
                 //     } else {
 
                 //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
@@ -606,8 +529,6 @@ class PurchasesController extends BaseController
                 //             ->where('product_id', $value['product_id'])
 
                 //             ->first();
-
-
 
                 //         if ($unit && $product_warehouse) {
 
@@ -628,128 +549,115 @@ class PurchasesController extends BaseController
                 //     }
 
                 // }
-
             }
 
             PurchaseDetail::insert($orderDetails);
-
         }, 10);
 
-
-
-        return response()->json(['success' => true, 'message' => 'Purchase Created !!']);
-
+        return response()->json([
+            "success" => true,
+            "message" => "Purchase Created !!",
+        ]);
     }
-
-
 
     //--------- Update Purchase  -------------\\
 
-
-
     public function update(Request $request, $id)
-
     {
-
-        $this->authorizeForUser($request->user('api'), 'update', Purchase::class);
-
-
+        $this->authorizeForUser(
+            $request->user("api"),
+            "update",
+            Purchase::class
+        );
 
         request()->validate([
+            "warehouse_id" => "required",
 
-            'warehouse_id' => 'required',
-
-            'supplier_id' => 'required',
-
+            "supplier_id" => "required",
         ]);
 
-
-
         \DB::transaction(function () use ($request, $id) {
+            $role = Auth::user()
+                ->roles()
+                ->first();
 
-            $role = Auth::user()->roles()->first();
-
-            $view_records = Role::findOrFail($role->id)->inRole('record_view');
+            $view_records = Role::findOrFail($role->id)->inRole("record_view");
 
             $current_Purchase = Purchase::findOrFail($id);
 
-
-
-            if (PurchaseReturn::where('purchase_id', $id)->where('deleted_at', '=', null)->exists()) {
-
-                return response()->json(['success' => false , 'Return exist for the Transaction' => false], 403);
-
-            }else{
-
-
-
+            if (
+                PurchaseReturn::where("purchase_id", $id)
+                    ->where("deleted_at", "=", null)
+                    ->exists()
+            ) {
+                return response()->json(
+                    [
+                        "success" => false,
+                        "Return exist for the Transaction" => false,
+                    ],
+                    403
+                );
+            } else {
                 // Check If User Has Permission view All Records
 
                 if (!$view_records) {
-
                     // Check If User->id === Purchase->id
 
-                    $this->authorizeForUser($request->user('api'), 'check_record', $current_Purchase);
-
+                    $this->authorizeForUser(
+                        $request->user("api"),
+                        "check_record",
+                        $current_Purchase
+                    );
                 }
 
+                $old_purchase_details = PurchaseDetail::where(
+                    "purchase_id",
+                    $id
+                )->get();
 
-
-                $old_purchase_details = PurchaseDetail::where('purchase_id', $id)->get();
-
-                $new_purchase_details = $request['details'];
+                $new_purchase_details = $request["details"];
 
                 $length = sizeof($new_purchase_details);
-
-
 
                 // Get Ids for new Details
 
                 $new_products_id = [];
 
                 foreach ($new_purchase_details as $new_detail) {
-
-                    $new_products_id[] = $new_detail['id'];
-
+                    $new_products_id[] = $new_detail["id"];
                 }
-
-
 
                 // Init Data with old Parametre
 
                 $old_products_id = [];
 
                 foreach ($old_purchase_details as $key => $value) {
-
                     $old_products_id[] = $value->id;
-
-                
 
                     //check if detail has purchase_unit_id Or Null
 
-                    if($value['purchase_unit_id'] !== null){
+                    if ($value["purchase_unit_id"] !== null) {
+                        $unit = Unit::where(
+                            "id",
+                            $value["purchase_unit_id"]
+                        )->first();
+                    } else {
+                        $product_unit_purchase_id = Product::with(
+                            "unitPurchase"
+                        )
 
-                        $unit = Unit::where('id', $value['purchase_unit_id'])->first();
+                            ->where("id", $value["product_id"])
 
-                    }else{
+                            ->first();
 
-                        $product_unit_purchase_id = Product::with('unitPurchase')
-
-                        ->where('id', $value['product_id'])
-
-                        ->first();
-
-                        $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
-
+                        $unit = Unit::where(
+                            "id",
+                            $product_unit_purchase_id["unitPurchase"]->id
+                        )->first();
                     }
 
-
-
-                    if($value['purchase_unit_id'] !== null){
-
+                    if ($value["purchase_unit_id"] !== null) {
                         // if ($current_Purchase->statut == "received") {
-
-
 
                         //     if ($value['product_variant_id'] !== null) {
 
@@ -763,8 +671,6 @@ class PurchasesController extends BaseController
 
                         //             ->first();
 
-
-
                         //         if ($unit && $product_warehouse) {
 
                         //             if ($unit->operator == '/') {
@@ -777,13 +683,9 @@ class PurchasesController extends BaseController
 
                         //             }
 
-
-
                         //             $product_warehouse->save();
 
                         //         }
-
-
 
                         //     } else {
 
@@ -795,8 +697,6 @@ class PurchasesController extends BaseController
 
                         //             ->first();
 
-
-
                         //         if ($unit && $product_warehouse) {
 
                         //             if ($unit->operator == '/') {
@@ -809,8 +709,6 @@ class PurchasesController extends BaseController
 
                         //             }
 
-
-
                         //             $product_warehouse->save();
 
                         //         }
@@ -819,41 +717,30 @@ class PurchasesController extends BaseController
 
                         // }
 
-
-
                         // Delete Detail
 
-                        if (!in_array($old_products_id[$key], $new_products_id)) {
-
-                            $PurchaseDetail = PurchaseDetail::findOrFail($value->id);
+                        if (
+                            !in_array($old_products_id[$key], $new_products_id)
+                        ) {
+                            $PurchaseDetail = PurchaseDetail::findOrFail(
+                                $value->id
+                            );
 
                             $PurchaseDetail->delete();
-
                         }
-
                     }
-
-
-
                 }
-
-
 
                 // Update Data with New request
 
                 foreach ($new_purchase_details as $key => $prod_detail) {
-
-                    
-
-                    if($prod_detail['no_unit'] !== 0){
-
-                        $unit_prod = Unit::where('id', $prod_detail['purchase_unit_id'])->first();
-
-
+                    if ($prod_detail["no_unit"] !== 0) {
+                        $unit_prod = Unit::where(
+                            "id",
+                            $prod_detail["purchase_unit_id"]
+                        )->first();
 
                         // if ($request['statut'] == "received") {
-
-
 
                         //     if ($prod_detail['product_variant_id'] !== null) {
 
@@ -867,8 +754,6 @@ class PurchasesController extends BaseController
 
                         //             ->first();
 
-
-
                         //         if ($unit_prod && $product_warehouse) {
 
                         //             if ($unit_prod->operator == '/') {
@@ -881,13 +766,9 @@ class PurchasesController extends BaseController
 
                         //             }
 
-
-
                         //             $product_warehouse->save();
 
                         //         }
-
-
 
                         //     } else {
 
@@ -899,8 +780,6 @@ class PurchasesController extends BaseController
 
                         //             ->first();
 
-
-
                         //         if ($unit_prod && $product_warehouse) {
 
                         //             if ($unit_prod->operator == '/') {
@@ -913,2530 +792,2174 @@ class PurchasesController extends BaseController
 
                         //             }
 
-
-
                         //             $product_warehouse->save();
 
                         //         }
 
                         //     }
 
-
-
                         // }
 
+                        $orderDetails["purchase_id"] = $id;
 
+                        $orderDetails["cost"] = $prod_detail["Unit_cost"];
 
-                        $orderDetails['purchase_id'] = $id;
+                        $orderDetails["purchase_unit_id"] =
+                            $prod_detail["purchase_unit_id"];
 
-                        $orderDetails['cost'] = $prod_detail['Unit_cost'];
+                        $orderDetails["TaxNet"] = $prod_detail["tax_percent"];
 
-                        $orderDetails['purchase_unit_id'] = $prod_detail['purchase_unit_id'];
+                        $orderDetails["tax_method"] =
+                            $prod_detail["tax_method"];
 
-                        $orderDetails['TaxNet'] = $prod_detail['tax_percent'];
+                        $orderDetails["discount"] = $prod_detail["discount"];
 
-                        $orderDetails['tax_method'] = $prod_detail['tax_method'];
+                        $orderDetails["discount_method"] =
+                            $prod_detail["discount_Method"];
 
-                        $orderDetails['discount'] = $prod_detail['discount'];
+                        $orderDetails["quantity"] = $prod_detail["quantity"];
 
-                        $orderDetails['discount_method'] = $prod_detail['discount_Method'];
+                        $orderDetails["product_id"] =
+                            $prod_detail["product_id"];
 
-                        $orderDetails['quantity'] = $prod_detail['quantity'];
+                        $orderDetails["product_variant_id"] =
+                            $prod_detail["product_variant_id"];
 
-                        $orderDetails['product_id'] = $prod_detail['product_id'];
+                        $orderDetails["total"] = $prod_detail["subtotal"];
 
-                        $orderDetails['product_variant_id'] = $prod_detail['product_variant_id'];
+                        $orderDetails["imei_number"] =
+                            $prod_detail["imei_number"];
 
-                        $orderDetails['total'] = $prod_detail['subtotal'];
-
-                        $orderDetails['imei_number'] = $prod_detail['imei_number'];
-
-
-
-                        if (!in_array($prod_detail['id'], $old_products_id)) {
-
+                        if (!in_array($prod_detail["id"], $old_products_id)) {
                             PurchaseDetail::Create($orderDetails);
-
                         } else {
-
-                            PurchaseDetail::where('id', $prod_detail['id'])->update($orderDetails);
-
+                            PurchaseDetail::where(
+                                "id",
+                                $prod_detail["id"]
+                            )->update($orderDetails);
                         }
-
                     }
-
                 }
 
-
-
-                $due = $request['GrandTotal'] - $current_Purchase->paid_amount;
+                $due = $request["GrandTotal"] - $current_Purchase->paid_amount;
 
                 if ($due === 0.0 || $due < 0.0) {
-
-                    $payment_statut = 'paid';
-
-                } else if ($due != $request['GrandTotal']) {
-
-                    $payment_statut = 'partial';
-
-                } else if ($due == $request['GrandTotal']) {
-
-                    $payment_statut = 'unpaid';
-
+                    $payment_statut = "paid";
+                } elseif ($due != $request["GrandTotal"]) {
+                    $payment_statut = "partial";
+                } elseif ($due == $request["GrandTotal"]) {
+                    $payment_statut = "unpaid";
                 }
 
-
-
                 $current_Purchase->update([
+                    "date" => $request["date"],
 
-                    'date' => $request['date'],
+                    "provider_id" => $request["supplier_id"],
 
-                    'provider_id' => $request['supplier_id'],
+                    "warehouse_id" => $request["warehouse_id"],
 
-                    'warehouse_id' => $request['warehouse_id'],
+                    "notes" => $request["notes"],
 
-                    'notes' => $request['notes'],
+                    "tax_rate" => $request["tax_rate"],
 
-                    'tax_rate' => $request['tax_rate'],
+                    "TaxNet" => $request["TaxNet"],
 
-                    'TaxNet' => $request['TaxNet'],
+                    "discount" => $request["discount"],
 
-                    'discount' => $request['discount'],
+                    "shipping" => $request["shipping"],
 
-                    'shipping' => $request['shipping'],
+                    "statut" => $request["statut"],
 
-                    'statut' => $request['statut'],
+                    "GrandTotal" => $request["GrandTotal"],
 
-                    'GrandTotal' => $request['GrandTotal'],
-
-                    'payment_statut' => $payment_statut,
-
+                    "payment_statut" => $payment_statut,
                 ]);
-
             }
-
-
-
         }, 10);
 
-
-
-        return response()->json(['success' => true, 'message' => 'Purchase Updated !!']);
-
-
-
+        return response()->json([
+            "success" => true,
+            "message" => "Purchase Updated !!",
+        ]);
     }
-
-
 
     //------ Delete Purchase -------------\\
 
-
-
     public function destroy(Request $request, $id)
-
     {
-
-        $this->authorizeForUser($request->user('api'), 'delete', Purchase::class);
-
-
+        $this->authorizeForUser(
+            $request->user("api"),
+            "delete",
+            Purchase::class
+        );
 
         \DB::transaction(function () use ($id, $request) {
+            $role = Auth::user()
+                ->roles()
+                ->first();
 
-            $role = Auth::user()->roles()->first();
-
-            $view_records = Role::findOrFail($role->id)->inRole('record_view');
+            $view_records = Role::findOrFail($role->id)->inRole("record_view");
 
             $current_Purchase = Purchase::findOrFail($id);
 
-            $old_purchase_details = PurchaseDetail::where('purchase_id', $id)->get();
+            $old_purchase_details = PurchaseDetail::where(
+                "purchase_id",
+                $id
+            )->get();
 
-
-
-            if (PurchaseReturn::where('purchase_id', $id)->where('deleted_at', '=', null)->exists()) {
-
-                return response()->json(['success' => false , 'Return exist for the Transaction' => false], 403);
-
-            }else{
-
-
-
+            if (
+                PurchaseReturn::where("purchase_id", $id)
+                    ->where("deleted_at", "=", null)
+                    ->exists()
+            ) {
+                return response()->json(
+                    [
+                        "success" => false,
+                        "Return exist for the Transaction" => false,
+                    ],
+                    403
+                );
+            } else {
                 // Check If User Has Permission view All Records
 
                 if (!$view_records) {
-
                     // Check If User->id === current_Purchase->id
 
-                    $this->authorizeForUser($request->user('api'), 'check_record', $current_Purchase);
-
+                    $this->authorizeForUser(
+                        $request->user("api"),
+                        "check_record",
+                        $current_Purchase
+                    );
                 }
 
+                foreach ($old_purchase_details as $detail) {
+                    //check if detail has purchase_unit_id Or Null
 
+                    // if($value['purchase_unit_id'] !== null){
 
-                    foreach ($old_purchase_details as $detail) {
+                    //     $unit = Unit::where('id', $value['purchase_unit_id'])->first();
 
-                
+                    // }else{
 
-                        //check if detail has purchase_unit_id Or Null
+                    //     $product_unit_purchase_id = Product::with('unitPurchase')
 
-                        // if($value['purchase_unit_id'] !== null){
+                    //     ->where('id', $value['product_id'])
 
-                        //     $unit = Unit::where('id', $value['purchase_unit_id'])->first();
+                    //     ->first();
 
-                        // }else{
+                    //     $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
 
-                        //     $product_unit_purchase_id = Product::with('unitPurchase')
+                    // }
 
-                        //     ->where('id', $value['product_id'])
+                    // if ($current_Purchase->statut == "received") {
 
-                        //     ->first();
+                    //     if ($value['product_variant_id'] !== null) {
 
-                        //     $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
+                    //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
 
-                        // }
+                    //             ->where('warehouse_id', $current_Purchase->warehouse_id)
 
-                    
+                    //             ->where('product_id', $value['product_id'])
 
-                        // if ($current_Purchase->statut == "received") {
+                    //             ->where('product_variant_id', $value['product_variant_id'])
 
+                    //             ->first();
 
+                    //         if ($unit && $product_warehouse) {
 
-                        //     if ($value['product_variant_id'] !== null) {
+                    //             if ($unit->operator == '/') {
 
-                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                    //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
 
-                        //             ->where('warehouse_id', $current_Purchase->warehouse_id)
+                    //             } else {
 
-                        //             ->where('product_id', $value['product_id'])
+                    //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
 
-                        //             ->where('product_variant_id', $value['product_variant_id'])
+                    //             }
 
-                        //             ->first();
+                    //             $product_warehouse->save();
 
+                    //         }
 
+                    //     } else {
 
-                        //         if ($unit && $product_warehouse) {
+                    //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
 
-                        //             if ($unit->operator == '/') {
+                    //             ->where('warehouse_id', $current_Purchase->warehouse_id)
 
-                        //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
+                    //             ->where('product_id', $value['product_id'])
 
-                        //             } else {
+                    //             ->first();
 
-                        //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
+                    //         if ($unit && $product_warehouse) {
 
-                        //             }
+                    //             if ($unit->operator == '/') {
 
+                    //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
 
+                    //             } else {
 
-                        //             $product_warehouse->save();
+                    //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
 
-                        //         }
+                    //             }
 
+                    //             $product_warehouse->save();
 
+                    //         }
 
-                        //     } else {
+                    //     }
 
-                        //         $product_warehouse = product_warehouse::where('deleted_at', '=', null)
+                    // }
 
-                        //             ->where('warehouse_id', $current_Purchase->warehouse_id)
+                    $product = Product::with("category")->find(
+                        $detail->product_id
+                    );
 
-                        //             ->where('product_id', $value['product_id'])
+                    $categoryCode = $product->category->code ?? null;
 
-                        //             ->first();
+                    // Count all scans for this detail
 
+                    $scanCount = PurchaseBarcodeScan::where(
+                        "purchase_detail_id",
+                        $detail->id
+                    )->count();
 
+                    // Calculate qty that was added earlier
 
-                        //         if ($unit && $product_warehouse) {
+                    if ($categoryCode == "123") {
+                        // 2 scans = 1 qty
 
-                        //             if ($unit->operator == '/') {
+                        $qtyToReverse = floor($scanCount / 2);
+                    } else {
+                        // Normal product: 1 scan = 1 qty
 
-                        //                 $product_warehouse->qte -= $value['quantity'] / $unit->operator_value;
+                        $qtyToReverse = $scanCount;
+                    }
 
-                        //             } else {
+                    // Fetch warehouse product
 
-                        //                 $product_warehouse->qte -= $value['quantity'] * $unit->operator_value;
+                    $warehouseProduct = product_warehouse::whereNull(
+                        "deleted_at"
+                    )
 
-                        //             }
+                        ->where("warehouse_id", $current_Purchase->warehouse_id)
 
+                        ->where("product_id", $detail->product_id)
 
+                        ->when($detail->product_variant_id, function ($q) use (
+                            $detail
+                        ) {
+                            return $q->where(
+                                "product_variant_id",
+                                $detail->product_variant_id
+                            );
+                        })
 
-                        //             $product_warehouse->save();
+                        ->first();
 
-                        //         }
+                    // Reverse qty
 
-                        //     }
+                    if ($warehouseProduct && $qtyToReverse > 0) {
+                        $warehouseProduct->qte -= $qtyToReverse;
 
-                        // }
-
-                        $product = Product::with('category')->find($detail->product_id);
-
-                        $categoryCode = $product->category->code ?? null;
-
-
-
-                        // Count all scans for this detail
-
-                        $scanCount = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->count();
-
-
-
-                        // Calculate qty that was added earlier
-
-                        if ($categoryCode == '123') {
-
-                            // 2 scans = 1 qty
-
-                            $qtyToReverse = floor($scanCount / 2);
-
-                        } else {
-
-                            // Normal product: 1 scan = 1 qty
-
-                            $qtyToReverse = $scanCount;
-
+                        if ($warehouseProduct->qte < 0) {
+                            $warehouseProduct->qte = 0;
                         }
 
+                        $warehouseProduct->save();
+                    }
 
+                    // Delete scans for this detail
 
-                        // Fetch warehouse product
-
-                        $warehouseProduct = product_warehouse::whereNull('deleted_at')
-
-                            ->where('warehouse_id', $current_Purchase->warehouse_id)
-
-                            ->where('product_id', $detail->product_id)
-
-                            ->when($detail->product_variant_id, function($q) use ($detail) {
-
-                                return $q->where('product_variant_id', $detail->product_variant_id);
-
-                            })
-
-                            ->first();
-
-
-
-                        // Reverse qty
-
-                        if ($warehouseProduct && $qtyToReverse > 0) {
-
-                            $warehouseProduct->qte -= $qtyToReverse;
-
-                            if ($warehouseProduct->qte < 0) {
-
-                                $warehouseProduct->qte = 0;
-
-                            }
-
-                            $warehouseProduct->save();
-
-                        }
-
-
-
-                        // Delete scans for this detail
-
-                        PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->delete();
-
+                    PurchaseBarcodeScan::where(
+                        "purchase_detail_id",
+                        $detail->id
+                    )->delete();
                 }
-
-
 
                 $current_Purchase->details()->delete();
 
                 $current_Purchase->update([
-
-                    'deleted_at' => Carbon::now(),
-
+                    "deleted_at" => Carbon::now(),
                 ]);
 
+                $Payment_purchase_data = PaymentPurchase::where(
+                    "purchase_id",
+                    $id
+                )->get();
 
-
-                $Payment_purchase_data = PaymentPurchase::where('purchase_id', $id)->get();
-
-                foreach($Payment_purchase_data as $Payment_purchase){
-
-                   $account = Account::find($Payment_purchase->account_id);
-
- 
+                foreach ($Payment_purchase_data as $Payment_purchase) {
+                    $account = Account::find($Payment_purchase->account_id);
 
                     if ($account) {
-
                         $account->update([
-
-                            'balance' => $account->balance + $Payment_purchase->montant,
-
+                            "balance" =>
+                                $account->balance + $Payment_purchase->montant,
                         ]);
-
                     }
 
-
-
                     $Payment_purchase->delete();
-
                 }
-
-
-
             }
-
-
-
         }, 10);
 
-
-
-        return response()->json(['success' => true, 'message' => 'Purchase Deleted !!']);
-
+        return response()->json([
+            "success" => true,
+            "message" => "Purchase Deleted !!",
+        ]);
     }
-
-
 
     //-------------- Delete by selection  ---------------\\
 
-
-
     public function delete_by_selection(Request $request)
-
     {
-
-
-
-        $this->authorizeForUser($request->user('api'), 'delete', Purchase::class);
-
-
+        $this->authorizeForUser(
+            $request->user("api"),
+            "delete",
+            Purchase::class
+        );
 
         \DB::transaction(function () use ($request) {
+            $role = Auth::user()
+                ->roles()
+                ->first();
 
-            $role = Auth::user()->roles()->first();
-
-            $view_records = Role::findOrFail($role->id)->inRole('record_view');
+            $view_records = Role::findOrFail($role->id)->inRole("record_view");
 
             $selectedIds = $request->selectedIds;
 
-
-
             foreach ($selectedIds as $purchase_id) {
-
-
-
-                if (PurchaseReturn::where('purchase_id', $purchase_id)->where('deleted_at', '=', null)->exists()) {
-
-                    return response()->json(['success' => false , 'Return exist for the Transaction' => false], 403);
-
-                }else{
-
-
-
+                if (
+                    PurchaseReturn::where("purchase_id", $purchase_id)
+                        ->where("deleted_at", "=", null)
+                        ->exists()
+                ) {
+                    return response()->json(
+                        [
+                            "success" => false,
+                            "Return exist for the Transaction" => false,
+                        ],
+                        403
+                    );
+                } else {
                     $current_Purchase = Purchase::findOrFail($purchase_id);
 
-                    $old_purchase_details = PurchaseDetail::where('purchase_id', $purchase_id)->get();
+                    $old_purchase_details = PurchaseDetail::where(
+                        "purchase_id",
+                        $purchase_id
+                    )->get();
 
                     // Check If User Has Permission view All Records
 
                     if (!$view_records) {
-
                         // Check If User->id === current_Purchase->id
 
-                        $this->authorizeForUser($request->user('api'), 'check_record', $current_Purchase);
-
+                        $this->authorizeForUser(
+                            $request->user("api"),
+                            "check_record",
+                            $current_Purchase
+                        );
                     }
 
                     foreach ($old_purchase_details as $detail) {
-
-
-
-                        $product = Product::with('category')->find($detail->product_id);
+                        $product = Product::with("category")->find(
+                            $detail->product_id
+                        );
 
                         $categoryCode = $product->category->code ?? null;
 
-
-
                         // Count scans for this detail
 
-                        $scanCount = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->count();
-
-
+                        $scanCount = PurchaseBarcodeScan::where(
+                            "purchase_detail_id",
+                            $detail->id
+                        )->count();
 
                         // Determine qty based on scan logic
 
-                        if ($categoryCode == '123') {
-
+                        if ($categoryCode == "123") {
                             // 2 scans = 1 qty
 
                             $qtyToReverse = floor($scanCount / 2);
-
                         } else {
-
                             // Normal: 1 scan = 1 qty
 
                             $qtyToReverse = $scanCount;
-
                         }
-
-
 
                         // Fetch warehouse product
 
-                        $product_warehouse = product_warehouse::whereNull('deleted_at')
+                        $product_warehouse = product_warehouse::whereNull(
+                            "deleted_at"
+                        )
 
-                            ->where('warehouse_id', $current_Purchase->warehouse_id)
+                            ->where(
+                                "warehouse_id",
+                                $current_Purchase->warehouse_id
+                            )
 
-                            ->where('product_id', $detail->product_id)
+                            ->where("product_id", $detail->product_id)
 
-                            ->when($detail->product_variant_id, function($q) use ($detail) {
-
-                                return $q->where('product_variant_id', $detail->product_variant_id);
-
+                            ->when($detail->product_variant_id, function (
+                                $q
+                            ) use ($detail) {
+                                return $q->where(
+                                    "product_variant_id",
+                                    $detail->product_variant_id
+                                );
                             })
 
                             ->first();
 
-
-
                         // Reverse qty
 
                         if ($product_warehouse && $qtyToReverse > 0) {
-
                             $product_warehouse->qte -= $qtyToReverse;
 
                             if ($product_warehouse->qte < 0) {
-
                                 $product_warehouse->qte = 0;
-
                             }
 
                             $product_warehouse->save();
-
                         }
-
-
 
                         // Delete all scanned barcodes for this detail
 
-                        PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->delete();
-
+                        PurchaseBarcodeScan::where(
+                            "purchase_detail_id",
+                            $detail->id
+                        )->delete();
                     }
-
-
-
-        
 
                     $current_Purchase->details()->delete();
 
                     $current_Purchase->update([
-
-                        'deleted_at' => Carbon::now(),
-
+                        "deleted_at" => Carbon::now(),
                     ]);
 
+                    $Payment_purchase_data = PaymentPurchase::where(
+                        "purchase_id",
+                        $purchase_id
+                    )->get();
 
-
-                    $Payment_purchase_data = PaymentPurchase::where('purchase_id', $purchase_id)->get();
-
-                    foreach($Payment_purchase_data as $Payment_purchase){
-
+                    foreach ($Payment_purchase_data as $Payment_purchase) {
                         $account = Account::find($Payment_purchase->account_id);
 
-    
-
                         if ($account) {
-
                             $account->update([
-
-                                'balance' => $account->balance + $Payment_purchase->montant,
-
+                                "balance" =>
+                                    $account->balance +
+                                    $Payment_purchase->montant,
                             ]);
-
                         }
 
-
-
                         $Payment_purchase->delete();
-
                     }
-
-
-
                 }
-
             }
-
-
-
         }, 10);
 
-        return response()->json(['success' => true, 'message' => 'Purchase Deleted !!']);
-
-
-
+        return response()->json([
+            "success" => true,
+            "message" => "Purchase Deleted !!",
+        ]);
     }
-
-
-
-
 
     //---------------- Get Details Purchase -----------------\\
 
-
-
     public function show(Request $request, $id)
-
     {
+        $this->authorizeForUser($request->user("api"), "view", Purchase::class);
 
+        $role = Auth::user()
+            ->roles()
+            ->first();
 
+        $view_records = Role::findOrFail($role->id)->inRole("record_view");
 
-        $this->authorizeForUser($request->user('api'), 'view', Purchase::class);
+        $purchase = Purchase::with("details.product.unitPurchase")
 
-        $role = Auth::user()->roles()->first();
-
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
-
-        $purchase = Purchase::with('details.product.unitPurchase')
-
-            ->where('deleted_at', '=', null)
+            ->where("deleted_at", "=", null)
 
             ->findOrFail($id);
 
-
-
-        
-
-        $details = array();
-
-
+        $details = [];
 
         // Check If User Has Permission view All Records
 
         if (!$view_records) {
-
             // Check If User->id === purchase->id
 
-            $this->authorizeForUser($request->user('api'), 'check_record', $purchase);
-
+            $this->authorizeForUser(
+                $request->user("api"),
+                "check_record",
+                $purchase
+            );
         }
 
+        $purchase_data["Ref"] = $purchase->Ref;
 
+        $purchase_data["date"] = $purchase->date . " " . $purchase->time;
 
-        $purchase_data['Ref'] = $purchase->Ref;
+        $purchase_data["statut"] = $purchase->statut;
 
-        $purchase_data['date'] = $purchase->date . ' ' . $purchase->time;
+        $purchase_data["note"] = $purchase->notes;
 
-        $purchase_data['statut'] = $purchase->statut;
+        $purchase_data["discount"] = $purchase->discount;
 
-        $purchase_data['note'] = $purchase->notes;
+        $purchase_data["shipping"] = $purchase->shipping;
 
-        $purchase_data['discount'] = $purchase->discount;
+        $purchase_data["tax_rate"] = $purchase->tax_rate;
 
-        $purchase_data['shipping'] = $purchase->shipping;
+        $purchase_data["TaxNet"] = $purchase->TaxNet;
 
-        $purchase_data['tax_rate'] = $purchase->tax_rate;
+        $purchase_data["supplier_name"] = $purchase["provider"]->name;
 
-        $purchase_data['TaxNet'] = $purchase->TaxNet;
+        $purchase_data["supplier_email"] = $purchase["provider"]->email;
 
-        $purchase_data['supplier_name'] = $purchase['provider']->name;
+        $purchase_data["supplier_phone"] = $purchase["provider"]->phone;
 
-        $purchase_data['supplier_email'] = $purchase['provider']->email;
+        $purchase_data["supplier_adr"] = $purchase["provider"]->adresse;
 
-        $purchase_data['supplier_phone'] = $purchase['provider']->phone;
+        $purchase_data["supplier_tax"] = $purchase["provider"]->tax_number;
 
-        $purchase_data['supplier_adr'] = $purchase['provider']->adresse;
+        $purchase_data["warehouse"] = $purchase["warehouse"]->name;
 
-        $purchase_data['supplier_tax'] = $purchase['provider']->tax_number;
+        $purchase_data["GrandTotal"] = number_format(
+            $purchase->GrandTotal,
+            2,
+            ".",
+            ""
+        );
 
-        $purchase_data['warehouse'] = $purchase['warehouse']->name;
+        $purchase_data["paid_amount"] = number_format(
+            $purchase->paid_amount,
+            2,
+            ".",
+            ""
+        );
 
-        $purchase_data['GrandTotal'] = number_format($purchase->GrandTotal, 2, '.', '');
+        $purchase_data["due"] = number_format(
+            $purchase_data["GrandTotal"] - $purchase_data["paid_amount"],
+            2,
+            ".",
+            ""
+        );
 
-        $purchase_data['paid_amount'] = number_format($purchase->paid_amount, 2, '.', '');
+        $purchase_data["payment_status"] = $purchase->payment_statut;
 
-        $purchase_data['due'] = number_format($purchase_data['GrandTotal'] - $purchase_data['paid_amount'], 2, '.', '');
-
-        $purchase_data['payment_status'] = $purchase->payment_statut;
-
-
-
-        if (PurchaseReturn::where('purchase_id', $id)->where('deleted_at', '=', null)->exists()) {
-
-            $PurchaseReturn = PurchaseReturn::where('purchase_id', $id)->where('deleted_at', '=', null)->first();
-
-            $purchase_data['purchasereturn_id'] = $PurchaseReturn->id;
-
-            $purchase_data['purchase_has_return'] = 'yes';
-
-        }else{
-
-            $purchase_data['purchase_has_return'] = 'no';
-
-        }
-
-
-
-        foreach ($purchase['details'] as $detail) {
-
-
-
-             //-------check if detail has purchase_unit_id Or Null
-
-             if($detail->purchase_unit_id !== null){
-
-                $unit = Unit::where('id', $detail->purchase_unit_id)->first();
-
-            }else{
-
-                $product_unit_purchase_id = Product::with('unitPurchase')
-
-                ->where('id', $detail->product_id)
-
+        if (
+            PurchaseReturn::where("purchase_id", $id)
+                ->where("deleted_at", "=", null)
+                ->exists()
+        ) {
+            $PurchaseReturn = PurchaseReturn::where("purchase_id", $id)
+                ->where("deleted_at", "=", null)
                 ->first();
 
-                $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
+            $purchase_data["purchasereturn_id"] = $PurchaseReturn->id;
 
-            }
-
-
-
-            if ($detail->product_variant_id) {
-
-
-
-                $productsVariants = ProductVariant::where('product_id', $detail->product_id)
-
-                    ->where('id', $detail->product_variant_id)->first();
-
-
-
-                $data['code'] = $productsVariants->code;
-
-                $data['name'] = '['.$productsVariants->name . ']' . $detail['product']['name'];
-
-           
-
-            } else {
-
-                $data['code'] = $detail['product']['code'];
-
-                $data['name'] = $detail['product']['name'];
-
-            }
-
-            
-
-            $data['quantity'] = $detail->quantity;
-
-            $data['received_quantity'] = $detail->received_quantity;
-
-            $data['total'] = $detail->total;
-
-            $data['cost'] = $detail->cost;
-
-            $data['unit_purchase'] = $unit->ShortName;
-
-
-
-            if ($detail->discount_method == '2') {
-
-                $data['DiscountNet'] = $detail->discount;
-
-            } else {
-
-                $data['DiscountNet'] = $detail->cost * $detail->discount / 100;
-
-            }
-
-
-
-            $tax_cost = $detail->TaxNet * (($detail->cost - $data['DiscountNet']) / 100);
-
-            $data['Unit_cost'] = $detail->cost;
-
-            $data['discount'] = $detail->discount;
-
-
-
-            if ($detail->tax_method == '1') {
-
-
-
-                $data['Net_cost'] = $detail->cost - $data['DiscountNet'];
-
-                $data['taxe'] = $tax_cost;
-
-            } else {
-
-                $data['Net_cost'] = ($detail->cost - $data['DiscountNet'] - $tax_cost);
-
-                $data['taxe'] = $detail->cost - $data['Net_cost'] - $data['DiscountNet'];
-
-            }
-
-
-
-            $data['is_imei'] = $detail['product']['is_imei'];
-
-            $data['imei_number'] = $detail->imei_number;
-
-
-
-            $details[] = $data;
-
+            $purchase_data["purchase_has_return"] = "yes";
+        } else {
+            $purchase_data["purchase_has_return"] = "no";
         }
 
+        foreach ($purchase["details"] as $detail) {
+            //-------check if detail has purchase_unit_id Or Null
 
+            if ($detail->purchase_unit_id !== null) {
+                $unit = Unit::where("id", $detail->purchase_unit_id)->first();
+            } else {
+                $product_unit_purchase_id = Product::with("unitPurchase")
 
-        $company = Setting::where('deleted_at', '=', null)->first();
+                    ->where("id", $detail->product_id)
 
+                    ->first();
 
+                $unit = Unit::where(
+                    "id",
+                    $product_unit_purchase_id["unitPurchase"]->id
+                )->first();
+            }
+
+            if ($detail->product_variant_id) {
+                $productsVariants = ProductVariant::where(
+                    "product_id",
+                    $detail->product_id
+                )
+
+                    ->where("id", $detail->product_variant_id)
+                    ->first();
+
+                $data["code"] = $productsVariants->code;
+
+                $data["name"] =
+                    "[" .
+                    $productsVariants->name .
+                    "]" .
+                    $detail["product"]["name"];
+            } else {
+                $data["code"] = $detail["product"]["code"];
+
+                $data["name"] = $detail["product"]["name"];
+            }
+
+            $data["quantity"] = $detail->quantity;
+
+            $data["received_quantity"] = $detail->received_quantity;
+
+            $data["total"] = $detail->total;
+
+            $data["cost"] = $detail->cost;
+
+            $data["unit_purchase"] = $unit->ShortName;
+
+            if ($detail->discount_method == "2") {
+                $data["DiscountNet"] = $detail->discount;
+            } else {
+                $data["DiscountNet"] =
+                    ($detail->cost * $detail->discount) / 100;
+            }
+
+            $tax_cost =
+                $detail->TaxNet *
+                (($detail->cost - $data["DiscountNet"]) / 100);
+
+            $data["Unit_cost"] = $detail->cost;
+
+            $data["discount"] = $detail->discount;
+
+            if ($detail->tax_method == "1") {
+                $data["Net_cost"] = $detail->cost - $data["DiscountNet"];
+
+                $data["taxe"] = $tax_cost;
+            } else {
+                $data["Net_cost"] =
+                    $detail->cost - $data["DiscountNet"] - $tax_cost;
+
+                $data["taxe"] =
+                    $detail->cost - $data["Net_cost"] - $data["DiscountNet"];
+            }
+
+            $data["is_imei"] = $detail["product"]["is_imei"];
+
+            $data["imei_number"] = $detail->imei_number;
+
+            $details[] = $data;
+        }
+
+        $company = Setting::where("deleted_at", "=", null)->first();
 
         return response()->json([
+            "details" => $details,
 
-            'details' => $details,
+            "purchase" => $purchase_data,
 
-            'purchase' => $purchase_data,
-
-            'company' => $company,
-
+            "company" => $company,
         ]);
-
-
-
     }
-
-
 
     //--------------- Get Payments of Purchase ----------------\\
 
-
-
     public function Get_Payments(Request $request, $id)
-
     {
+        $this->authorizeForUser(
+            $request->user("api"),
+            "view",
+            PaymentPurchase::class
+        );
 
+        $role = Auth::user()
+            ->roles()
+            ->first();
 
-
-        $this->authorizeForUser($request->user('api'), 'view', PaymentPurchase::class);
-
-        $role = Auth::user()->roles()->first();
-
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
+        $view_records = Role::findOrFail($role->id)->inRole("record_view");
 
         $purchase = Purchase::findOrFail($id);
-
-
 
         // Check If User Has Permission view All Records
 
         if (!$view_records) {
-
             // Check If User->id === purchase->id
 
-            $this->authorizeForUser($request->user('api'), 'check_record', $purchase);
-
+            $this->authorizeForUser(
+                $request->user("api"),
+                "check_record",
+                $purchase
+            );
         }
 
+        $payments = PaymentPurchase::with("purchase", "payment_method")
 
-
-        $payments = PaymentPurchase::with('purchase','payment_method')
-
-            ->where('purchase_id', $id)
+            ->where("purchase_id", $id)
 
             ->where(function ($query) use ($view_records) {
-
                 if (!$view_records) {
-
-                    return $query->where('user_id', '=', Auth::user()->id);
-
+                    return $query->where("user_id", "=", Auth::user()->id);
                 }
-
-            })->orderBy('id', 'DESC')->get();
-
-
+            })
+            ->orderBy("id", "DESC")
+            ->get();
 
         $due = $purchase->GrandTotal - $purchase->paid_amount;
 
-
-
-        return response()->json(['payments' => $payments, 'due' => $due]);
-
+        return response()->json(["payments" => $payments, "due" => $due]);
     }
-
-
 
     //--------------- Reference Number of Purchase ----------------\\
 
-
-
     public function getNumberOrder()
-
     {
-
-
-
-        $last = DB::table('purchases')->latest('id')->first();
-
-
+        $last = DB::table("purchases")
+            ->latest("id")
+            ->first();
 
         if ($last) {
-
             $item = $last->Ref;
 
             $nwMsg = explode("_", $item);
 
             $inMsg = $nwMsg[1] + 1;
 
-            $code = $nwMsg[0] . '_' . $inMsg;
-
+            $code = $nwMsg[0] . "_" . $inMsg;
         } else {
-
-            $code = 'PR_1111';
-
+            $code = "PR_1111";
         }
 
         return $code;
-
-
-
     }
-
-
 
     //-------------- purchase PDF -----------\\
 
-
-
     public function Purchase_pdf(Request $request, $id)
-
     {
-
-        $details = array();
+        $details = [];
 
         $helpers = new helpers();
 
-        $Purchase_data = Purchase::with('details.product.unitPurchase')
+        $Purchase_data = Purchase::with("details.product.unitPurchase")
 
-            ->where('deleted_at', '=', null)
+            ->where("deleted_at", "=", null)
 
             ->findOrFail($id);
 
+        $purchase["supplier_name"] = $Purchase_data["provider"]->name;
 
+        $purchase["supplier_phone"] = $Purchase_data["provider"]->phone;
 
-        $purchase['supplier_name'] = $Purchase_data['provider']->name;
+        $purchase["supplier_adr"] = $Purchase_data["provider"]->adresse;
 
-        $purchase['supplier_phone'] = $Purchase_data['provider']->phone;
+        $purchase["supplier_email"] = $Purchase_data["provider"]->email;
 
-        $purchase['supplier_adr'] = $Purchase_data['provider']->adresse;
+        $purchase["supplier_tax"] = $Purchase_data["provider"]->tax_number;
 
-        $purchase['supplier_email'] = $Purchase_data['provider']->email;
+        $purchase["TaxNet"] = number_format($Purchase_data->TaxNet, 2, ".", "");
 
-        $purchase['supplier_tax'] = $Purchase_data['provider']->tax_number;
+        $purchase["discount"] = number_format(
+            $Purchase_data->discount,
+            2,
+            ".",
+            ""
+        );
 
-        $purchase['TaxNet'] = number_format($Purchase_data->TaxNet, 2, '.', '');
+        $purchase["shipping"] = number_format(
+            $Purchase_data->shipping,
+            2,
+            ".",
+            ""
+        );
 
-        $purchase['discount'] = number_format($Purchase_data->discount, 2, '.', '');
+        $purchase["statut"] = $Purchase_data->statut;
 
-        $purchase['shipping'] = number_format($Purchase_data->shipping, 2, '.', '');
+        $purchase["Ref"] = $Purchase_data->Ref;
 
-        $purchase['statut'] = $Purchase_data->statut;
+        $purchase["date"] = $Purchase_data->date . " " . $Purchase_data->time;
 
-        $purchase['Ref'] = $Purchase_data->Ref;
+        $purchase["GrandTotal"] = number_format(
+            $Purchase_data->GrandTotal,
+            2,
+            ".",
+            ""
+        );
 
-        $purchase['date'] = $Purchase_data->date . ' ' . $Purchase_data->time;
+        $purchase["paid_amount"] = number_format(
+            $Purchase_data->paid_amount,
+            2,
+            ".",
+            ""
+        );
 
-        $purchase['GrandTotal'] = number_format($Purchase_data->GrandTotal, 2, '.', '');
+        $purchase["due"] = number_format(
+            $purchase["GrandTotal"] - $purchase["paid_amount"],
+            2,
+            ".",
+            ""
+        );
 
-        $purchase['paid_amount'] = number_format($Purchase_data->paid_amount, 2, '.', '');
-
-        $purchase['due'] = number_format($purchase['GrandTotal'] - $purchase['paid_amount'], 2, '.', '');
-
-        $purchase['payment_status'] = $Purchase_data->payment_statut;
-
-
+        $purchase["payment_status"] = $Purchase_data->payment_statut;
 
         $detail_id = 0;
 
-        foreach ($Purchase_data['details'] as $detail) {
-
-
-
+        foreach ($Purchase_data["details"] as $detail) {
             //-------check if detail has purchase_unit_id Or Null
 
-            if($detail->purchase_unit_id !== null){
+            if ($detail->purchase_unit_id !== null) {
+                $unit = Unit::where("id", $detail->purchase_unit_id)->first();
+            } else {
+                $product_unit_purchase_id = Product::with("unitPurchase")
 
-                $unit = Unit::where('id', $detail->purchase_unit_id)->first();
+                    ->where("id", $detail->product_id)
 
-            }else{
+                    ->first();
 
-                $product_unit_purchase_id = Product::with('unitPurchase')
-
-                ->where('id', $detail->product_id)
-
-                ->first();
-
-                $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
-
+                $unit = Unit::where(
+                    "id",
+                    $product_unit_purchase_id["unitPurchase"]->id
+                )->first();
             }
-
-
 
             if ($detail->product_variant_id) {
+                $productsVariants = ProductVariant::where(
+                    "product_id",
+                    $detail->product_id
+                )
 
+                    ->where("id", $detail->product_variant_id)
+                    ->first();
 
+                $data["code"] = $productsVariants->code;
 
-                $productsVariants = ProductVariant::where('product_id', $detail->product_id)
-
-                    ->where('id', $detail->product_variant_id)->first();
-
-
-
-                $data['code'] = $productsVariants->code;
-
-                $data['name'] = '['.$productsVariants->name . ']' . $detail['product']['name'];
-
+                $data["name"] =
+                    "[" .
+                    $productsVariants->name .
+                    "]" .
+                    $detail["product"]["name"];
             } else {
+                $data["code"] = $detail["product"]["code"];
 
-                $data['code'] = $detail['product']['code'];
-
-                $data['name'] = $detail['product']['name'];
-
+                $data["name"] = $detail["product"]["name"];
             }
 
+            $data["detail_id"] = $detail_id += 1;
 
+            $data["quantity"] = number_format($detail->quantity, 2, ".", "");
 
-                $data['detail_id'] = $detail_id += 1;
+            $data["total"] = number_format($detail->total, 2, ".", "");
 
-                $data['quantity'] = number_format($detail->quantity, 2, '.', '');
+            $data["unit_purchase"] = $unit->ShortName;
 
-                $data['total'] = number_format($detail->total, 2, '.', '');
+            $data["cost"] = number_format($detail->cost, 2, ".", "");
 
-                $data['unit_purchase'] = $unit->ShortName;
-
-                $data['cost'] = number_format($detail->cost, 2, '.', '');
-
-
-
-            if ($detail->discount_method == '2') {
-
-                $data['DiscountNet'] = number_format($detail->discount, 2, '.', '');
-
+            if ($detail->discount_method == "2") {
+                $data["DiscountNet"] = number_format(
+                    $detail->discount,
+                    2,
+                    ".",
+                    ""
+                );
             } else {
-
-                $data['DiscountNet'] = number_format($detail->cost * $detail->discount / 100, 2, '.', '');
-
+                $data["DiscountNet"] = number_format(
+                    ($detail->cost * $detail->discount) / 100,
+                    2,
+                    ".",
+                    ""
+                );
             }
 
+            $tax_cost =
+                $detail->TaxNet *
+                (($detail->cost - $data["DiscountNet"]) / 100);
 
+            $data["Unit_cost"] = number_format($detail->cost, 2, ".", "");
 
-            $tax_cost = $detail->TaxNet * (($detail->cost - $data['DiscountNet']) / 100);
+            $data["discount"] = number_format($detail->discount, 2, ".", "");
 
-            $data['Unit_cost'] = number_format($detail->cost, 2, '.', '');
+            if ($detail->tax_method == "1") {
+                $data["Net_cost"] = $detail->cost - $data["DiscountNet"];
 
-            $data['discount'] = number_format($detail->discount, 2, '.', '');
-
-
-
-            if ($detail->tax_method == '1') {
-
-
-
-                $data['Net_cost'] = $detail->cost - $data['DiscountNet'];
-
-                $data['taxe'] = number_format($tax_cost, 2, '.', '');
-
+                $data["taxe"] = number_format($tax_cost, 2, ".", "");
             } else {
+                $data["Net_cost"] =
+                    $detail->cost - $data["DiscountNet"] - $tax_cost;
 
-                $data['Net_cost'] = ($detail->cost - $data['DiscountNet'] - $tax_cost);
-
-                $data['taxe'] = number_format($detail->cost - $data['Net_cost'] - $data['DiscountNet'], 2, '.', '');
-
+                $data["taxe"] = number_format(
+                    $detail->cost - $data["Net_cost"] - $data["DiscountNet"],
+                    2,
+                    ".",
+                    ""
+                );
             }
 
+            $data["is_imei"] = $detail["product"]["is_imei"];
 
-
-            $data['is_imei'] = $detail['product']['is_imei'];
-
-            $data['imei_number'] = $detail->imei_number;
-
-
+            $data["imei_number"] = $detail->imei_number;
 
             $details[] = $data;
-
         }
 
-
-
-        $settings = Setting::where('deleted_at', '=', null)->first();
+        $settings = Setting::where("deleted_at", "=", null)->first();
 
         $symbol = $helpers->Get_Currency_Code();
 
+        $Html = view("pdf.purchase_pdf", [
+            "symbol" => $symbol,
 
+            "setting" => $settings,
 
-        $Html = view('pdf.purchase_pdf', [
+            "purchase" => $purchase,
 
-            'symbol' => $symbol,
-
-            'setting' => $settings,
-
-            'purchase' => $purchase,
-
-            'details' => $details,
-
+            "details" => $details,
         ])->render();
-
-
 
         $arabic = new Arabic();
 
         $p = $arabic->arIdentify($Html);
 
+        for ($i = count($p) - 1; $i >= 0; $i -= 2) {
+            $utf8ar = $arabic->utf8Glyphs(
+                substr($Html, $p[$i - 1], $p[$i] - $p[$i - 1])
+            );
 
-
-        for ($i = count($p)-1; $i >= 0; $i-=2) {
-
-            $utf8ar = $arabic->utf8Glyphs(substr($Html, $p[$i-1], $p[$i] - $p[$i-1]));
-
-            $Html = substr_replace($Html, $utf8ar, $p[$i-1], $p[$i] - $p[$i-1]);
-
+            $Html = substr_replace(
+                $Html,
+                $utf8ar,
+                $p[$i - 1],
+                $p[$i] - $p[$i - 1]
+            );
         }
-
-
 
         $pdf = PDF::loadHTML($Html);
 
-        return $pdf->download('purchase.pdf');
-
-
-
+        return $pdf->download("purchase.pdf");
     }
-
-
 
     //---------------- Show Form Create Purchase ---------------\\
 
-
-
     public function create(Request $request)
-
     {
+        $this->authorizeForUser(
+            $request->user("api"),
+            "create",
+            Purchase::class
+        );
 
+        //get warehouses assigned to user
 
+        $user_auth = auth()->user();
 
-        $this->authorizeForUser($request->user('api'), 'create', Purchase::class);
+        if ($user_auth->is_all_warehouses) {
+            $warehouses = Warehouse::where("deleted_at", "=", null)->get([
+                "id",
+                "name",
+            ]);
+        } else {
+            $warehouses_id = UserWarehouse::where("user_id", $user_auth->id)
+                ->pluck("warehouse_id")
+                ->toArray();
 
+            $warehouses = Warehouse::where("deleted_at", "=", null)
+                ->whereIn("id", $warehouses_id)
+                ->get(["id", "name"]);
+        }
 
-
-         //get warehouses assigned to user
-
-         $user_auth = auth()->user();
-
-         if($user_auth->is_all_warehouses){
-
-             $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-
-         }else{
-
-             $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-
-             $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-
-         } 
-
-
-
-        $suppliers = Provider::where('deleted_at', '=', null)->get(['id', 'name']);
-
-
-
-        return response()->json([
-
-            'warehouses' => $warehouses,
-
-            'suppliers' => $suppliers,
-
+        $suppliers = Provider::where("deleted_at", "=", null)->get([
+            "id",
+            "name",
         ]);
 
+        return response()->json([
+            "warehouses" => $warehouses,
+
+            "suppliers" => $suppliers,
+        ]);
     }
-
-
 
     //-------------Show Form Edit Purchase-----------\\
 
-
-
     public function edit(Request $request, $id)
-
     {
+        if (
+            PurchaseReturn::where("purchase_id", $id)
+                ->where("deleted_at", "=", null)
+                ->exists()
+        ) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "Return exist for the Transaction" => false,
+                ],
+                403
+            );
+        } else {
+            $this->authorizeForUser(
+                $request->user("api"),
+                "update",
+                Purchase::class
+            );
 
-        if (PurchaseReturn::where('purchase_id', $id)->where('deleted_at', '=', null)->exists()) {
+            $role = Auth::user()
+                ->roles()
+                ->first();
 
-            return response()->json(['success' => false , 'Return exist for the Transaction' => false], 403);
+            $view_records = Role::findOrFail($role->id)->inRole("record_view");
 
-        }else{
+            $Purchase_data = Purchase::with("details.product.unitPurchase")
 
-
-
-            $this->authorizeForUser($request->user('api'), 'update', Purchase::class);
-
-            $role = Auth::user()->roles()->first();
-
-            $view_records = Role::findOrFail($role->id)->inRole('record_view');
-
-            $Purchase_data = Purchase::with('details.product.unitPurchase')
-
-                ->where('deleted_at', '=', null)
+                ->where("deleted_at", "=", null)
 
                 ->findOrFail($id);
 
-            $details = array();
+            $details = [];
 
             // Check If User Has Permission view All Records
 
             if (!$view_records) {
-
                 // Check If User->id === Purchase->id
 
-                $this->authorizeForUser($request->user('api'), 'check_record', $Purchase_data);
-
+                $this->authorizeForUser(
+                    $request->user("api"),
+                    "check_record",
+                    $Purchase_data
+                );
             }
-
-
 
             if ($Purchase_data->provider_id) {
-
-                if (Provider::where('id', $Purchase_data->provider_id)->where('deleted_at', '=', null)->first()) {
-
-                    $purchase['supplier_id'] = $Purchase_data->provider_id;
-
+                if (
+                    Provider::where("id", $Purchase_data->provider_id)
+                        ->where("deleted_at", "=", null)
+                        ->first()
+                ) {
+                    $purchase["supplier_id"] = $Purchase_data->provider_id;
                 } else {
-
-                    $purchase['supplier_id'] = '';
-
+                    $purchase["supplier_id"] = "";
                 }
-
             } else {
-
-                $purchase['supplier_id'] = '';
-
+                $purchase["supplier_id"] = "";
             }
-
-
 
             if ($Purchase_data->warehouse_id) {
-
-                if (Warehouse::where('id', $Purchase_data->warehouse_id)->where('deleted_at', '=', null)->first()) {
-
-                    $purchase['warehouse_id'] = $Purchase_data->warehouse_id;
-
+                if (
+                    Warehouse::where("id", $Purchase_data->warehouse_id)
+                        ->where("deleted_at", "=", null)
+                        ->first()
+                ) {
+                    $purchase["warehouse_id"] = $Purchase_data->warehouse_id;
                 } else {
-
-                    $purchase['warehouse_id'] = '';
-
+                    $purchase["warehouse_id"] = "";
                 }
-
             } else {
-
-                $purchase['warehouse_id'] = '';
-
+                $purchase["warehouse_id"] = "";
             }
 
+            $purchase["date"] = $Purchase_data->date;
 
+            $purchase["tax_rate"] = $Purchase_data->tax_rate;
 
-            $purchase['date'] = $Purchase_data->date;
+            $purchase["TaxNet"] = $Purchase_data->TaxNet;
 
-            $purchase['tax_rate'] = $Purchase_data->tax_rate;
+            $purchase["discount"] = $Purchase_data->discount;
 
-            $purchase['TaxNet'] = $Purchase_data->TaxNet;
+            $purchase["shipping"] = $Purchase_data->shipping;
 
-            $purchase['discount'] = $Purchase_data->discount;
+            $purchase["statut"] = $Purchase_data->statut;
 
-            $purchase['shipping'] = $Purchase_data->shipping;
-
-            $purchase['statut'] = $Purchase_data->statut;
-
-            $purchase['notes'] = $Purchase_data->notes;
-
-
+            $purchase["notes"] = $Purchase_data->notes;
 
             $detail_id = 0;
 
-            foreach ($Purchase_data['details'] as $detail) {
-
-
-
+            foreach ($Purchase_data["details"] as $detail) {
                 //-------check if detail has purchase_unit_id Or Null
 
-                if($detail->purchase_unit_id !== null){
+                if ($detail->purchase_unit_id !== null) {
+                    $unit = Unit::where(
+                        "id",
+                        $detail->purchase_unit_id
+                    )->first();
 
-                    $unit = Unit::where('id', $detail->purchase_unit_id)->first();
+                    $data["no_unit"] = 1;
+                } else {
+                    $product_unit_purchase_id = Product::with("unitPurchase")
 
-                    $data['no_unit'] = 1;
-
-                }else{
-
-                    $product_unit_purchase_id = Product::with('unitPurchase')
-
-                    ->where('id', $detail->product_id)
-
-                    ->first();
-
-                    $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
-
-                    $data['no_unit'] = 0;
-
-                }
-
-
-
-                if ($detail->product_variant_id) {
-
-                    $item_product = product_warehouse::where('product_id', $detail->product_id)
-
-                        ->where('deleted_at', '=', null)
-
-                        ->where('product_variant_id', $detail->product_variant_id)
-
-                        ->where('warehouse_id', $Purchase_data->warehouse_id)
+                        ->where("id", $detail->product_id)
 
                         ->first();
 
+                    $unit = Unit::where(
+                        "id",
+                        $product_unit_purchase_id["unitPurchase"]->id
+                    )->first();
 
+                    $data["no_unit"] = 0;
+                }
 
-                    $productsVariants = ProductVariant::where('product_id', $detail->product_id)
+                if ($detail->product_variant_id) {
+                    $item_product = product_warehouse::where(
+                        "product_id",
+                        $detail->product_id
+                    )
 
-                        ->where('id', $detail->product_variant_id)->first();
+                        ->where("deleted_at", "=", null)
 
+                        ->where(
+                            "product_variant_id",
+                            $detail->product_variant_id
+                        )
 
+                        ->where("warehouse_id", $Purchase_data->warehouse_id)
 
-                    $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                        ->first();
 
+                    $productsVariants = ProductVariant::where(
+                        "product_id",
+                        $detail->product_id
+                    )
 
+                        ->where("id", $detail->product_variant_id)
+                        ->first();
 
-                    $data['code'] = $productsVariants->code;
+                    $item_product ? ($data["del"] = 0) : ($data["del"] = 1);
 
-                    $data['name'] = '['.$productsVariants->name . ']' . $detail['product']['name'];
+                    $data["code"] = $productsVariants->code;
 
-                    $data['product_variant_id'] = $detail->product_variant_id;                
+                    $data["name"] =
+                        "[" .
+                        $productsVariants->name .
+                        "]" .
+                        $detail["product"]["name"];
 
+                    $data["product_variant_id"] = $detail->product_variant_id;
 
-
-                    if ($unit && $unit->operator == '/') {
-
-                        $data['stock'] = $item_product ? $item_product->qte * $unit->operator_value : 0;
-
-                    } else if ($unit && $unit->operator == '*') {
-
-                        $data['stock'] = $item_product ? $item_product->qte / $unit->operator_value : 0;
-
+                    if ($unit && $unit->operator == "/") {
+                        $data["stock"] = $item_product
+                            ? $item_product->qte * $unit->operator_value
+                            : 0;
+                    } elseif ($unit && $unit->operator == "*") {
+                        $data["stock"] = $item_product
+                            ? $item_product->qte / $unit->operator_value
+                            : 0;
                     } else {
-
-                        $data['stock'] = 0;
-
+                        $data["stock"] = 0;
                     }
-
-
-
                 } else {
+                    $item_product = product_warehouse::where(
+                        "product_id",
+                        $detail->product_id
+                    )
 
-                    $item_product = product_warehouse::where('product_id', $detail->product_id)
+                        ->where("deleted_at", "=", null)
+                        ->where("product_variant_id", "=", null)
 
-                        ->where('deleted_at', '=', null)->where('product_variant_id', '=', null)
+                        ->where("warehouse_id", $Purchase_data->warehouse_id)
+                        ->first();
 
-                        ->where('warehouse_id', $Purchase_data->warehouse_id)->first();
+                    $item_product ? ($data["del"] = 0) : ($data["del"] = 1);
 
+                    $data["product_variant_id"] = null;
 
+                    $data["code"] = $detail["product"]["code"];
 
-                    $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                    $data["name"] = $detail["product"]["name"];
 
-                    $data['product_variant_id'] = null;
-
-
-
-                    $data['code'] = $detail['product']['code'];
-
-                    $data['name'] = $detail['product']['name'];
-
-                
-
-
-
-                    if ($unit && $unit->operator == '/') {
-
-                        $data['stock'] = $item_product ? $item_product->qte * $unit->operator_value : 0;
-
-                    } else if ($unit && $unit->operator == '*') {
-
-                        $data['stock'] = $item_product ? $item_product->qte / $unit->operator_value : 0;
-
+                    if ($unit && $unit->operator == "/") {
+                        $data["stock"] = $item_product
+                            ? $item_product->qte * $unit->operator_value
+                            : 0;
+                    } elseif ($unit && $unit->operator == "*") {
+                        $data["stock"] = $item_product
+                            ? $item_product->qte / $unit->operator_value
+                            : 0;
                     } else {
-
-                        $data['stock'] = 0;
-
+                        $data["stock"] = 0;
                     }
-
-
-
                 }
 
+                $data["id"] = $detail->id;
 
+                $data["detail_id"] = $detail_id += 1;
 
-                $data['id'] = $detail->id;
+                $data["quantity"] = $detail->quantity;
 
-                $data['detail_id'] = $detail_id += 1;
+                $data["product_id"] = $detail->product_id;
 
-                $data['quantity'] = $detail->quantity;
+                $data["unitPurchase"] = $unit->ShortName;
 
-                $data['product_id'] = $detail->product_id;
+                $data["purchase_unit_id"] = $unit->id;
 
-                $data['unitPurchase'] = $unit->ShortName;
+                $data["is_imei"] = $detail["product"]["is_imei"];
 
-                $data['purchase_unit_id'] = $unit->id;
+                $data["imei_number"] = $detail->imei_number;
 
-                
-
-                $data['is_imei'] = $detail['product']['is_imei'];
-
-                $data['imei_number'] = $detail->imei_number;
-
-
-
-                if ($detail->discount_method == '2') {
-
-                    $data['DiscountNet'] = $detail->discount;
-
+                if ($detail->discount_method == "2") {
+                    $data["DiscountNet"] = $detail->discount;
                 } else {
-
-                    $data['DiscountNet'] = $detail->cost * $detail->discount / 100;
-
+                    $data["DiscountNet"] =
+                        ($detail->cost * $detail->discount) / 100;
                 }
 
+                $tax_cost =
+                    $detail->TaxNet *
+                    (($detail->cost - $data["DiscountNet"]) / 100);
 
+                $data["Unit_cost"] = $detail->cost;
 
-                $tax_cost = $detail->TaxNet * (($detail->cost - $data['DiscountNet']) / 100);
+                $data["tax_percent"] = $detail->TaxNet;
 
-                $data['Unit_cost'] = $detail->cost;
+                $data["tax_method"] = $detail->tax_method;
 
-                $data['tax_percent'] = $detail->TaxNet;
+                $data["discount"] = $detail->discount;
 
-                $data['tax_method'] = $detail->tax_method;
+                $data["discount_Method"] = $detail->discount_method;
 
-                $data['discount'] = $detail->discount;
+                if ($detail->tax_method == "1") {
+                    $data["Net_cost"] = $detail->cost - $data["DiscountNet"];
 
-                $data['discount_Method'] = $detail->discount_method;
+                    $data["taxe"] = $tax_cost;
 
-
-
-                if ($detail->tax_method == '1') {
-
-                    $data['Net_cost'] = $detail->cost - $data['DiscountNet'];
-
-                    $data['taxe'] = $tax_cost;
-
-                    $data['subtotal'] = ($data['Net_cost'] * $data['quantity']) + ($tax_cost * $data['quantity']);
-
+                    $data["subtotal"] =
+                        $data["Net_cost"] * $data["quantity"] +
+                        $tax_cost * $data["quantity"];
                 } else {
+                    $data["Net_cost"] =
+                        $detail->cost - $data["DiscountNet"] - $tax_cost;
 
-                    $data['Net_cost'] = ($detail->cost - $data['DiscountNet'] - $tax_cost);
+                    $data["taxe"] =
+                        $detail->cost -
+                        $data["Net_cost"] -
+                        $data["DiscountNet"];
 
-                    $data['taxe'] = $detail->cost - $data['Net_cost'] - $data['DiscountNet'];
-
-                    $data['subtotal'] = ($data['Net_cost'] * $data['quantity']) + ($tax_cost * $data['quantity']);
-
+                    $data["subtotal"] =
+                        $data["Net_cost"] * $data["quantity"] +
+                        $tax_cost * $data["quantity"];
                 }
-
-
 
                 $details[] = $data;
-
             }
-
-
 
             //get warehouses assigned to user
 
             $user_auth = auth()->user();
 
-            if($user_auth->is_all_warehouses){
+            if ($user_auth->is_all_warehouses) {
+                $warehouses = Warehouse::where("deleted_at", "=", null)->get([
+                    "id",
+                    "name",
+                ]);
+            } else {
+                $warehouses_id = UserWarehouse::where("user_id", $user_auth->id)
+                    ->pluck("warehouse_id")
+                    ->toArray();
 
-                $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-
-            }else{
-
-                $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-
-                $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-
+                $warehouses = Warehouse::where("deleted_at", "=", null)
+                    ->whereIn("id", $warehouses_id)
+                    ->get(["id", "name"]);
             }
 
-            
-
-            $suppliers = Provider::where('deleted_at', '=', null)->get(['id', 'name']);
-
-
-
-            return response()->json([
-
-                'details' => $details,
-
-                'purchase' => $purchase,
-
-                'suppliers' => $suppliers,
-
-                'warehouses' => $warehouses,
-
+            $suppliers = Provider::where("deleted_at", "=", null)->get([
+                "id",
+                "name",
             ]);
 
+            return response()->json([
+                "details" => $details,
+
+                "purchase" => $purchase,
+
+                "suppliers" => $suppliers,
+
+                "warehouses" => $warehouses,
+            ]);
         }
-
     }
-
-
 
     //------------------- get_Products_by_purchase -----------------\\
 
-
-
-    public function get_Products_by_purchase(Request $request , $id)
-
+    public function get_Products_by_purchase(Request $request, $id)
     {
+        $this->authorizeForUser(
+            $request->user("api"),
+            "create",
+            PurchaseReturn::class
+        );
 
+        $role = Auth::user()
+            ->roles()
+            ->first();
 
+        $view_records = Role::findOrFail($role->id)->inRole("record_view");
 
-        $this->authorizeForUser($request->user('api'), 'create', PurchaseReturn::class);
+        $Purchase_data = Purchase::with("details.product.unitPurchase")
 
-        $role = Auth::user()->roles()->first();
-
-        $view_records = Role::findOrFail($role->id)->inRole('record_view');
-
-        $Purchase_data = Purchase::with('details.product.unitPurchase')
-
-            ->where('deleted_at', '=', null)
+            ->where("deleted_at", "=", null)
 
             ->findOrFail($id);
 
-
-
-        $details = array();
-
-        
+        $details = [];
 
         // Check If User Has Permission view All Records
 
         if (!$view_records) {
-
             // Check If User->id === Purchase->id
 
-            $this->authorizeForUser($request->user('api'), 'check_record', $Purchase_data);
-
+            $this->authorizeForUser(
+                $request->user("api"),
+                "check_record",
+                $Purchase_data
+            );
         }
 
+        $Return_detail["supplier_id"] = $Purchase_data->provider_id;
 
+        $Return_detail["warehouse_id"] = $Purchase_data->warehouse_id;
 
-        $Return_detail['supplier_id'] = $Purchase_data->provider_id;
+        $Return_detail["purchase_id"] = $Purchase_data->id;
 
-        $Return_detail['warehouse_id'] = $Purchase_data->warehouse_id;
+        $Return_detail["tax_rate"] = 0;
 
-        $Return_detail['purchase_id'] = $Purchase_data->id;
+        $Return_detail["TaxNet"] = 0;
 
-        $Return_detail['tax_rate'] = 0;
+        $Return_detail["discount"] = 0;
 
-        $Return_detail['TaxNet'] = 0;
+        $Return_detail["shipping"] = 0;
 
-        $Return_detail['discount'] = 0;
+        $Return_detail["statut"] = "completed";
 
-        $Return_detail['shipping'] = 0;
-
-        $Return_detail['statut'] = "completed";
-
-        $Return_detail['notes'] = "";
-
-
+        $Return_detail["notes"] = "";
 
         $detail_id = 0;
 
-        foreach ($Purchase_data['details'] as $detail) {
-
-
-
+        foreach ($Purchase_data["details"] as $detail) {
             //-------check if detail has purchase_unit_id Or Null
 
-            if($detail->purchase_unit_id !== null){
+            if ($detail->purchase_unit_id !== null) {
+                $unit = Unit::where("id", $detail->purchase_unit_id)->first();
 
-                $unit = Unit::where('id', $detail->purchase_unit_id)->first();
+                $data["no_unit"] = 1;
+            } else {
+                $product_unit_purchase_id = Product::with("unitPurchase")
 
-                $data['no_unit'] = 1;
-
-            }else{
-
-                $product_unit_purchase_id = Product::with('unitPurchase')
-
-                ->where('id', $detail->product_id)
-
-                ->first();
-
-                $unit = Unit::where('id', $product_unit_purchase_id['unitPurchase']->id)->first();
-
-                $data['no_unit'] = 0;
-
-            }
-
-
-
-            if ($detail->product_variant_id) {
-
-                $item_product = product_warehouse::where('product_id', $detail->product_id)
-
-                    ->where('deleted_at', '=', null)
-
-                    ->where('product_variant_id', $detail->product_variant_id)
-
-                    ->where('warehouse_id', $Purchase_data->warehouse_id)
+                    ->where("id", $detail->product_id)
 
                     ->first();
 
+                $unit = Unit::where(
+                    "id",
+                    $product_unit_purchase_id["unitPurchase"]->id
+                )->first();
 
+                $data["no_unit"] = 0;
+            }
 
-                $productsVariants = ProductVariant::where('product_id', $detail->product_id)
+            if ($detail->product_variant_id) {
+                $item_product = product_warehouse::where(
+                    "product_id",
+                    $detail->product_id
+                )
 
-                    ->where('id', $detail->product_variant_id)->first();
+                    ->where("deleted_at", "=", null)
 
+                    ->where("product_variant_id", $detail->product_variant_id)
 
+                    ->where("warehouse_id", $Purchase_data->warehouse_id)
 
-                $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                    ->first();
 
-                $data['name'] = '['.$productsVariants->name . ']' . $detail['product']['name'];
+                $productsVariants = ProductVariant::where(
+                    "product_id",
+                    $detail->product_id
+                )
 
-                $data['code'] = $productsVariants->code;
+                    ->where("id", $detail->product_variant_id)
+                    ->first();
 
+                $item_product ? ($data["del"] = 0) : ($data["del"] = 1);
 
+                $data["name"] =
+                    "[" .
+                    $productsVariants->name .
+                    "]" .
+                    $detail["product"]["name"];
 
-                $data['product_variant_id'] = $detail->product_variant_id;                
+                $data["code"] = $productsVariants->code;
 
+                $data["product_variant_id"] = $detail->product_variant_id;
 
-
-                if ($unit && $unit->operator == '/') {
-
-                    $data['stock'] = $item_product ? $item_product->qte * $unit->operator_value : 0;
-
-                } else if ($unit && $unit->operator == '*') {
-
-                    $data['stock'] = $item_product ? $item_product->qte / $unit->operator_value : 0;
-
+                if ($unit && $unit->operator == "/") {
+                    $data["stock"] = $item_product
+                        ? $item_product->qte * $unit->operator_value
+                        : 0;
+                } elseif ($unit && $unit->operator == "*") {
+                    $data["stock"] = $item_product
+                        ? $item_product->qte / $unit->operator_value
+                        : 0;
                 } else {
-
-                    $data['stock'] = 0;
-
+                    $data["stock"] = 0;
                 }
-
-
-
             } else {
+                $item_product = product_warehouse::where(
+                    "product_id",
+                    $detail->product_id
+                )
 
-                $item_product = product_warehouse::where('product_id', $detail->product_id)
+                    ->where("deleted_at", "=", null)
+                    ->where("product_variant_id", "=", null)
 
-                    ->where('deleted_at', '=', null)->where('product_variant_id', '=', null)
+                    ->where("warehouse_id", $Purchase_data->warehouse_id)
+                    ->first();
 
-                    ->where('warehouse_id', $Purchase_data->warehouse_id)->first();
+                $item_product ? ($data["del"] = 0) : ($data["del"] = 1);
 
+                $data["product_variant_id"] = null;
 
+                $data["code"] = $detail["product"]["code"];
 
-                $item_product ? $data['del'] = 0 : $data['del'] = 1;
+                $data["name"] = $detail["product"]["name"];
 
-                $data['product_variant_id'] = null;
-
-                $data['code'] = $detail['product']['code'];
-
-                $data['name'] = $detail['product']['name'];
-
-                
-
-
-
-                if ($unit && $unit->operator == '/') {
-
-                    $data['stock'] = $item_product ? $item_product->qte * $unit->operator_value : 0;
-
-                } else if ($unit && $unit->operator == '*') {
-
-                    $data['stock'] = $item_product ? $item_product->qte / $unit->operator_value : 0;
-
+                if ($unit && $unit->operator == "/") {
+                    $data["stock"] = $item_product
+                        ? $item_product->qte * $unit->operator_value
+                        : 0;
+                } elseif ($unit && $unit->operator == "*") {
+                    $data["stock"] = $item_product
+                        ? $item_product->qte / $unit->operator_value
+                        : 0;
                 } else {
-
-                    $data['stock'] = 0;
-
+                    $data["stock"] = 0;
                 }
-
-
-
             }
 
+            $data["id"] = $detail->id;
 
+            $data["detail_id"] = $detail_id += 1;
 
-            $data['id'] = $detail->id;
+            $data["quantity"] = $detail->quantity;
 
-            $data['detail_id'] = $detail_id += 1;
+            $data["purchase_quantity"] = $detail->quantity;
 
-            $data['quantity'] = $detail->quantity;
+            $data["product_id"] = $detail->product_id;
 
-            $data['purchase_quantity'] = $detail->quantity;
+            $data["unitPurchase"] = $unit->ShortName;
 
-            $data['product_id'] = $detail->product_id;
+            $data["purchase_unit_id"] = $unit->id;
 
-            $data['unitPurchase'] = $unit->ShortName;
+            $data["is_imei"] = $detail["product"]["is_imei"];
 
-            $data['purchase_unit_id'] = $unit->id;
+            $data["imei_number"] = $detail->imei_number;
 
-            
-
-            $data['is_imei'] = $detail['product']['is_imei'];
-
-            $data['imei_number'] = $detail->imei_number;
-
-
-
-            if ($detail->discount_method == '2') {
-
-                $data['DiscountNet'] = $detail->discount;
-
+            if ($detail->discount_method == "2") {
+                $data["DiscountNet"] = $detail->discount;
             } else {
-
-                $data['DiscountNet'] = $detail->cost * $detail->discount / 100;
-
+                $data["DiscountNet"] =
+                    ($detail->cost * $detail->discount) / 100;
             }
 
+            $tax_cost =
+                $detail->TaxNet *
+                (($detail->cost - $data["DiscountNet"]) / 100);
 
+            $data["Unit_cost"] = $detail->cost;
 
-            $tax_cost = $detail->TaxNet * (($detail->cost - $data['DiscountNet']) / 100);
+            $data["tax_percent"] = $detail->TaxNet;
 
-            $data['Unit_cost'] = $detail->cost;
+            $data["tax_method"] = $detail->tax_method;
 
-            $data['tax_percent'] = $detail->TaxNet;
+            $data["discount"] = $detail->discount;
 
-            $data['tax_method'] = $detail->tax_method;
+            $data["discount_Method"] = $detail->discount_method;
 
-            $data['discount'] = $detail->discount;
+            if ($detail->tax_method == "1") {
+                $data["Net_cost"] = $detail->cost - $data["DiscountNet"];
 
-            $data['discount_Method'] = $detail->discount_method;
+                $data["taxe"] = $tax_cost;
 
-
-
-            if ($detail->tax_method == '1') {
-
-                $data['Net_cost'] = $detail->cost - $data['DiscountNet'];
-
-                $data['taxe'] = $tax_cost;
-
-                $data['subtotal'] = ($data['Net_cost'] * $data['quantity']) + ($tax_cost * $data['quantity']);
-
+                $data["subtotal"] =
+                    $data["Net_cost"] * $data["quantity"] +
+                    $tax_cost * $data["quantity"];
             } else {
+                $data["Net_cost"] =
+                    $detail->cost - $data["DiscountNet"] - $tax_cost;
 
-                $data['Net_cost'] = ($detail->cost - $data['DiscountNet'] - $tax_cost);
+                $data["taxe"] =
+                    $detail->cost - $data["Net_cost"] - $data["DiscountNet"];
 
-                $data['taxe'] = $detail->cost - $data['Net_cost'] - $data['DiscountNet'];
-
-                $data['subtotal'] = ($data['Net_cost'] * $data['quantity']) + ($tax_cost * $data['quantity']);
-
+                $data["subtotal"] =
+                    $data["Net_cost"] * $data["quantity"] +
+                    $tax_cost * $data["quantity"];
             }
-
-
 
             $details[] = $data;
-
         }
 
-
-
         return response()->json([
+            "details" => $details,
 
-            'details' => $details,
-
-            'purchase_return' => $Return_detail,
-
+            "purchase_return" => $Return_detail,
         ]);
-
-
-
     }
 
-
-
-
-
-     //------------- Send Email -----------\\
-
-
+    //------------- Send Email -----------\\
 
     public function Send_Email(Request $request)
-
     {
-
-        $this->authorizeForUser($request->user('api'), 'view', Purchase::class);
-
-
+        $this->authorizeForUser($request->user("api"), "view", Purchase::class);
 
         //purchase
 
-        $purchase = Purchase::with('provider')->where('deleted_at', '=', null)->findOrFail($request->id);
-
-
+        $purchase = Purchase::with("provider")
+            ->where("deleted_at", "=", null)
+            ->findOrFail($request->id);
 
         $helpers = new helpers();
 
         $currency = $helpers->Get_Currency();
 
-
-
         //settings
 
-        $settings = Setting::where('deleted_at', '=', null)->first();
+        $settings = Setting::where("deleted_at", "=", null)->first();
 
-    
+        //the custom msg of sale
 
-         //the custom msg of sale
+        $emailMessage = EmailMessage::where("name", "purchase")->first();
 
-         $emailMessage  = EmailMessage::where('name', 'purchase')->first();
+        if ($emailMessage) {
+            $message_body = $emailMessage->body;
 
- 
+            $message_subject = $emailMessage->subject;
+        } else {
+            $message_body = "";
 
-         if($emailMessage){
-
-             $message_body = $emailMessage->body;
-
-             $message_subject = $emailMessage->subject;
-
-         }else{
-
-             $message_body = '';
-
-             $message_subject = '';
-
-         }
+            $message_subject = "";
+        }
 
         //Tags
 
         $random_number = Str::random(10);
 
-        $invoice_url = url('/api/purchase_pdf/' . $request->id.'?'.$random_number);
-
-
+        $invoice_url = url(
+            "/api/purchase_pdf/" . $request->id . "?" . $random_number
+        );
 
         $invoice_number = $purchase->Ref;
 
+        $total_amount =
+            $currency . " " . number_format($purchase->GrandTotal, 2, ".", ",");
 
+        $paid_amount =
+            $currency .
+            " " .
+            number_format($purchase->paid_amount, 2, ".", ",");
 
-        $total_amount = $currency . ' '.number_format($purchase->GrandTotal, 2, '.', ',');
+        $due_amount =
+            $currency .
+            " " .
+            number_format(
+                $purchase->GrandTotal - $purchase->paid_amount,
+                2,
+                ".",
+                ","
+            );
 
-        $paid_amount  = $currency . ' '.number_format($purchase->paid_amount, 2, '.', ',');
-
-        $due_amount   = $currency . ' '.number_format($purchase->GrandTotal - $purchase->paid_amount, 2, '.', ',');
-
-
-
-        $contact_name = $purchase['provider']->name;
+        $contact_name = $purchase["provider"]->name;
 
         $business_name = $settings->CompanyName;
 
+        //receiver email
 
-
-        //receiver email 
-
-        $receiver_email = $purchase['provider']->email;
-
-
+        $receiver_email = $purchase["provider"]->email;
 
         //replace the text with tags
 
-        $message_body = str_replace('{contact_name}', $contact_name, $message_body);
+        $message_body = str_replace(
+            "{contact_name}",
+            $contact_name,
+            $message_body
+        );
 
-        $message_body = str_replace('{business_name}', $business_name, $message_body);
+        $message_body = str_replace(
+            "{business_name}",
+            $business_name,
+            $message_body
+        );
 
-        $message_body = str_replace('{invoice_url}', $invoice_url, $message_body);
+        $message_body = str_replace(
+            "{invoice_url}",
+            $invoice_url,
+            $message_body
+        );
 
-        $message_body = str_replace('{invoice_number}', $invoice_number, $message_body);
+        $message_body = str_replace(
+            "{invoice_number}",
+            $invoice_number,
+            $message_body
+        );
 
+        $message_body = str_replace(
+            "{total_amount}",
+            $total_amount,
+            $message_body
+        );
 
+        $message_body = str_replace(
+            "{paid_amount}",
+            $paid_amount,
+            $message_body
+        );
 
-        $message_body = str_replace('{total_amount}', $total_amount, $message_body);
+        $message_body = str_replace("{due_amount}", $due_amount, $message_body);
 
-        $message_body = str_replace('{paid_amount}', $paid_amount, $message_body);
+        $email["subject"] = $message_subject;
 
-        $message_body = str_replace('{due_amount}', $due_amount, $message_body);
+        $email["body"] = $message_body;
 
+        $email["company_name"] = $business_name;
 
-
-        $email['subject'] = $message_subject;
-
-        $email['body'] = $message_body;
-
-        $email['company_name'] = $business_name;
-
-
-
-        $this->Set_config_mail(); 
+        $this->Set_config_mail();
 
         Mail::to($receiver_email)->send(new CustomEmail($email));
 
-        return response()->json(['message' => 'Email sent successfully'], 200);
+        return response()->json(["message" => "Email sent successfully"], 200);
 
         // return $mail;
-
     }
 
+    //-------------------Sms Notifications -----------------\\
 
+    public function Send_SMS(Request $request)
+    {
+        $this->authorizeForUser($request->user("api"), "view", Purchase::class);
 
-     //-------------------Sms Notifications -----------------\\
+        //purchase
 
+        $purchase = Purchase::with("provider")
+            ->where("deleted_at", "=", null)
+            ->findOrFail($request->id);
 
+        $helpers = new helpers();
 
-     public function Send_SMS(Request $request)
+        $currency = $helpers->Get_Currency();
 
-     {
+        //settings
 
- 
+        $settings = Setting::where("deleted_at", "=", null)->first();
 
-        $this->authorizeForUser($request->user('api'), 'view', Purchase::class);
+        $default_sms_gateway = sms_gateway::where("id", $settings->sms_gateway)
 
+            ->where("deleted_at", "=", null)
+            ->first();
 
+        //the custom msg of purchase
 
-         //purchase
+        $smsMessage = SMSMessage::where("name", "purchase")->first();
 
-         $purchase = Purchase::with('provider')->where('deleted_at', '=', null)->findOrFail($request->id);
+        if ($smsMessage) {
+            $message_text = $smsMessage->text;
+        } else {
+            $message_text = "";
+        }
 
- 
+        //Tags
 
-         $helpers = new helpers();
+        $random_number = Str::random(10);
 
-         $currency = $helpers->Get_Currency();
+        $invoice_url = url(
+            "/api/purchase_pdf/" . $request->id . "?" . $random_number
+        );
 
- 
+        $invoice_number = $purchase->Ref;
 
-         //settings
+        $total_amount =
+            $currency . " " . number_format($purchase->GrandTotal, 2, ".", ",");
 
-         $settings = Setting::where('deleted_at', '=', null)->first();
+        $paid_amount =
+            $currency .
+            " " .
+            number_format($purchase->paid_amount, 2, ".", ",");
 
-     
+        $due_amount =
+            $currency .
+            " " .
+            number_format(
+                $purchase->GrandTotal - $purchase->paid_amount,
+                2,
+                ".",
+                ","
+            );
 
-         $default_sms_gateway = sms_gateway::where('id' , $settings->sms_gateway)
+        $contact_name = $purchase["provider"]->name;
 
-            ->where('deleted_at', '=', null)->first();
+        $business_name = $settings->CompanyName;
 
+        //receiver Number
 
+        $receiverNumber = $purchase["provider"]->phone;
 
-         //the custom msg of purchase
+        //replace the text with tags
 
-         $smsMessage  = SMSMessage::where('name', 'purchase')->first();
+        $message_text = str_replace(
+            "{contact_name}",
+            $contact_name,
+            $message_text
+        );
 
- 
+        $message_text = str_replace(
+            "{business_name}",
+            $business_name,
+            $message_text
+        );
 
-         if($smsMessage){
+        $message_text = str_replace(
+            "{invoice_url}",
+            $invoice_url,
+            $message_text
+        );
 
-             $message_text = $smsMessage->text;
+        $message_text = str_replace(
+            "{invoice_number}",
+            $invoice_number,
+            $message_text
+        );
 
-         }else{
+        $message_text = str_replace(
+            "{total_amount}",
+            $total_amount,
+            $message_text
+        );
 
-             $message_text = '';
+        $message_text = str_replace(
+            "{paid_amount}",
+            $paid_amount,
+            $message_text
+        );
 
-         }
+        $message_text = str_replace("{due_amount}", $due_amount, $message_text);
 
- 
+        //twilio
 
-         //Tags
+        if ($default_sms_gateway->title == "twilio") {
+            try {
+                $account_sid = env("TWILIO_SID");
 
-         $random_number = Str::random(10);
+                $auth_token = env("TWILIO_TOKEN");
 
-         $invoice_url = url('/api/purchase_pdf/' . $request->id.'?'.$random_number);
+                $twilio_number = env("TWILIO_FROM");
 
-         $invoice_number = $purchase->Ref;
+                $client = new Client_Twilio($account_sid, $auth_token);
 
- 
+                $client->messages->create($receiverNumber, [
+                    "from" => $twilio_number,
 
-         $total_amount = $currency . ' '.number_format($purchase->GrandTotal, 2, '.', ',');
-
-         $paid_amount  = $currency . ' '.number_format($purchase->paid_amount, 2, '.', ',');
-
-         $due_amount   = $currency . ' '.number_format($purchase->GrandTotal - $purchase->paid_amount, 2, '.', ',');
-
- 
-
-         $contact_name = $purchase['provider']->name;
-
-         $business_name = $settings->CompanyName;
-
- 
-
-         //receiver Number
-
-         $receiverNumber = $purchase['provider']->phone;
-
- 
-
-         //replace the text with tags
-
-         $message_text = str_replace('{contact_name}', $contact_name, $message_text);
-
-         $message_text = str_replace('{business_name}', $business_name, $message_text);
-
-         $message_text = str_replace('{invoice_url}', $invoice_url, $message_text);
-
-         $message_text = str_replace('{invoice_number}', $invoice_number, $message_text);
-
- 
-
-         $message_text = str_replace('{total_amount}', $total_amount, $message_text);
-
-         $message_text = str_replace('{paid_amount}', $paid_amount, $message_text);
-
-         $message_text = str_replace('{due_amount}', $due_amount, $message_text);
-
- 
-
-         //twilio
-
-         if($default_sms_gateway->title == "twilio"){
-
-             try {
-
-     
-
-                 $account_sid = env("TWILIO_SID");
-
-                 $auth_token = env("TWILIO_TOKEN");
-
-                 $twilio_number = env("TWILIO_FROM");
-
-     
-
-                 $client = new Client_Twilio($account_sid, $auth_token);
-
-                 $client->messages->create($receiverNumber, [
-
-                     'from' => $twilio_number, 
-
-                     'body' => $message_text]);
-
-         
-
-             } catch (Exception $e) {
-
-                 return response()->json(['message' => $e->getMessage()], 500);
-
-             }
-
+                    "body" => $message_text,
+                ]);
+            } catch (Exception $e) {
+                return response()->json(["message" => $e->getMessage()], 500);
             }
+        }
 
         //termii
-
-        elseif($default_sms_gateway->title == "termii"){
-
-
-
+        elseif ($default_sms_gateway->title == "termii") {
             $client = new Client_termi();
 
-            $url = 'https://api.ng.termii.com/api/sms/send';
-
-
+            $url = "https://api.ng.termii.com/api/sms/send";
 
             $payload = [
+                "to" => $receiverNumber,
 
-                'to' => $receiverNumber,
+                "from" => env("TERMI_SENDER"),
 
-                'from' => env('TERMI_SENDER'),
+                "sms" => $message_text,
 
-                'sms' => $message_text,
+                "type" => "plain",
 
-                'type' => 'plain',
+                "channel" => "generic",
 
-                'channel' => 'generic',
-
-                'api_key' => env('TERMI_KEY'),
-
+                "api_key" => env("TERMI_KEY"),
             ];
 
-
-
             try {
-
                 $response = $client->post($url, [
-
-                    'json' => $payload,
-
+                    "json" => $payload,
                 ]);
-
-
 
                 $result = json_decode($response->getBody(), true);
 
                 return response()->json($result);
-
             } catch (\Exception $e) {
-
                 Log::error("Termii SMS Error: " . $e->getMessage());
 
-                return response()->json(['status' => 'error', 'message' => 'Failed to send SMS'], 500);
-
+                return response()->json(
+                    ["status" => "error", "message" => "Failed to send SMS"],
+                    500
+                );
             }
-
-             
-
- 
-
         }
 
         //---- infobip
+        elseif ($default_sms_gateway->title == "infobip") {
+            $BASE_URL = env("base_url");
 
-         elseif($default_sms_gateway->title == "infobip"){
+            $API_KEY = env("api_key");
 
- 
+            $SENDER = env("sender_from");
 
-             $BASE_URL = env("base_url");
+            $configuration = (new Configuration())
 
-             $API_KEY = env("api_key");
+                ->setHost($BASE_URL)
 
-             $SENDER = env("sender_from");
+                ->setApiKeyPrefix("Authorization", "App")
 
- 
+                ->setApiKey("Authorization", $API_KEY);
 
-             $configuration = (new Configuration())
+            $client = new Client_guzzle();
 
-                 ->setHost($BASE_URL)
+            $sendSmsApi = new SendSMSApi($client, $configuration);
 
-                 ->setApiKeyPrefix('Authorization', 'App')
+            $destination = (new SmsDestination())->setTo($receiverNumber);
 
-                 ->setApiKey('Authorization', $API_KEY);
+            $message = (new SmsTextualMessage())
 
-             
+                ->setFrom($SENDER)
 
-             $client = new Client_guzzle();
+                ->setText($message_text)
 
-             
+                ->setDestinations([$destination]);
 
-             $sendSmsApi = new SendSMSApi($client, $configuration);
+            $request = (new SmsAdvancedTextualRequest())->setMessages([
+                $message,
+            ]);
 
-             $destination = (new SmsDestination())->setTo($receiverNumber);
+            try {
+                $smsResponse = $sendSmsApi->sendSmsMessage($request);
 
-             $message = (new SmsTextualMessage())
+                echo "Response body: " . $smsResponse;
+            } catch (Throwable $apiException) {
+                echo "HTTP Code: " . $apiException->getCode() . "\n";
+            }
+        }
 
-                 ->setFrom($SENDER)
+        return response()->json(["success" => true]);
+    }
 
-                 ->setText($message_text)
-
-                 ->setDestinations([$destination]);
-
-                 
-
-             $request = (new SmsAdvancedTextualRequest())->setMessages([$message]);
-
-             
-
-             try {
-
-                 $smsResponse = $sendSmsApi->sendSmsMessage($request);
-
-                 echo ("Response body: " . $smsResponse);
-
-             } catch (Throwable $apiException) {
-
-                 echo("HTTP Code: " . $apiException->getCode() . "\n");
-
-             }
-
-             
-
-         }
-
- 
-
-         return response()->json(['success' => true]);
-
-         
-
-     }
-
-
-
-         // purchase_send_whatsapp
+    // purchase_send_whatsapp
 
     public function purchase_send_whatsapp(Request $request)
-
     {
+        //purchase
 
+        $purchase = Purchase::with("provider")
+            ->where("deleted_at", "=", null)
+            ->findOrFail($request->id);
 
+        $helpers = new helpers();
 
-         //purchase
+        $currency = $helpers->Get_Currency();
 
-         $purchase = Purchase::with('provider')->where('deleted_at', '=', null)->findOrFail($request->id);
+        //settings
 
- 
+        $settings = Setting::where("deleted_at", "=", null)->first();
 
-         $helpers = new helpers();
+        //the custom msg of purchase
 
-         $currency = $helpers->Get_Currency();
+        $smsMessage = SMSMessage::where("name", "purchase")->first();
 
- 
+        if ($smsMessage) {
+            $message_text = $smsMessage->text;
+        } else {
+            $message_text = "";
+        }
 
-         //settings
+        //Tags
 
-         $settings = Setting::where('deleted_at', '=', null)->first();
+        $random_number = Str::random(10);
 
-     
+        $invoice_url = url(
+            "/api/purchase_pdf/" . $request->id . "?" . $random_number
+        );
 
-         //the custom msg of purchase
+        $invoice_number = $purchase->Ref;
 
-         $smsMessage  = SMSMessage::where('name', 'purchase')->first();
+        $total_amount =
+            $currency . " " . number_format($purchase->GrandTotal, 2, ".", ",");
 
- 
+        $paid_amount =
+            $currency .
+            " " .
+            number_format($purchase->paid_amount, 2, ".", ",");
 
-         if($smsMessage){
+        $due_amount =
+            $currency .
+            " " .
+            number_format(
+                $purchase->GrandTotal - $purchase->paid_amount,
+                2,
+                ".",
+                ","
+            );
 
-             $message_text = $smsMessage->text;
+        $contact_name = $purchase["provider"]->name;
 
-         }else{
+        $business_name = $settings->CompanyName;
 
-             $message_text = '';
+        //receiver Number
 
-         }
-
- 
-
-         //Tags
-
-         $random_number = Str::random(10);
-
-         $invoice_url = url('/api/purchase_pdf/' . $request->id.'?'.$random_number);
-
-         $invoice_number = $purchase->Ref;
-
- 
-
-         $total_amount = $currency . ' '.number_format($purchase->GrandTotal, 2, '.', ',');
-
-         $paid_amount  = $currency . ' '.number_format($purchase->paid_amount, 2, '.', ',');
-
-         $due_amount   = $currency . ' '.number_format($purchase->GrandTotal - $purchase->paid_amount, 2, '.', ',');
-
- 
-
-         $contact_name = $purchase['provider']->name;
-
-         $business_name = $settings->CompanyName;
-
- 
-
-         //receiver Number
-
-         $receiverNumber = $purchase['provider']->phone;
-
-
+        $receiverNumber = $purchase["provider"]->phone;
 
         // Check if the phone number is empty or null
 
-        if (empty($receiverNumber) || $receiverNumber == null || $receiverNumber == 'null' || $receiverNumber == '') {
-
-            return response()->json(['error' => 'Phone number is missing'], 400);
-
+        if (
+            empty($receiverNumber) ||
+            $receiverNumber == null ||
+            $receiverNumber == "null" ||
+            $receiverNumber == ""
+        ) {
+            return response()->json(
+                ["error" => "Phone number is missing"],
+                400
+            );
         }
 
- 
+        //replace the text with tags
 
-         //replace the text with tags
+        $message_text = str_replace(
+            "{contact_name}",
+            $contact_name,
+            $message_text
+        );
 
-         $message_text = str_replace('{contact_name}', $contact_name, $message_text);
+        $message_text = str_replace(
+            "{business_name}",
+            $business_name,
+            $message_text
+        );
 
-         $message_text = str_replace('{business_name}', $business_name, $message_text);
+        $message_text = str_replace(
+            "{invoice_url}",
+            $invoice_url,
+            $message_text
+        );
 
-         $message_text = str_replace('{invoice_url}', $invoice_url, $message_text);
+        $message_text = str_replace(
+            "{invoice_number}",
+            $invoice_number,
+            $message_text
+        );
 
-         $message_text = str_replace('{invoice_number}', $invoice_number, $message_text);
+        $message_text = str_replace(
+            "{total_amount}",
+            $total_amount,
+            $message_text
+        );
 
- 
+        $message_text = str_replace(
+            "{paid_amount}",
+            $paid_amount,
+            $message_text
+        );
 
-         $message_text = str_replace('{total_amount}', $total_amount, $message_text);
+        $message_text = str_replace("{due_amount}", $due_amount, $message_text);
 
-         $message_text = str_replace('{paid_amount}', $paid_amount, $message_text);
-
-         $message_text = str_replace('{due_amount}', $due_amount, $message_text);
-
- 
-
-
-
-        return response()->json(['message' => $message_text , 'phone' => $receiverNumber ]);
-
-
-
-
-
+        return response()->json([
+            "message" => $message_text,
+            "phone" => $receiverNumber,
+        ]);
     }
 
+    //---------------- get_import_purchases ---------------\\
 
+    public function get_import_purchases(Request $request)
+    {
+        $this->authorizeForUser(
+            $request->user("api"),
+            "create",
+            Purchase::class
+        );
 
-        //---------------- get_import_purchases ---------------\\
+        //get warehouses assigned to user
 
+        $user_auth = auth()->user();
 
-
-        public function get_import_purchases(Request $request)
-
-        {
-
-    
-
-            $this->authorizeForUser($request->user('api'), 'create', Purchase::class);
-
-    
-
-            //get warehouses assigned to user
-
-            $user_auth = auth()->user();
-
-            if($user_auth->is_all_warehouses){
-
-                $warehouses = Warehouse::where('deleted_at', '=', null)->get(['id', 'name']);
-
-            }else{
-
-                $warehouses_id = UserWarehouse::where('user_id', $user_auth->id)->pluck('warehouse_id')->toArray();
-
-                $warehouses = Warehouse::where('deleted_at', '=', null)->whereIn('id', $warehouses_id)->get(['id', 'name']);
-
-            } 
-
-    
-
-            $suppliers = Provider::where('deleted_at', '=', null)->get(['id', 'name']);
-
-    
-
-            return response()->json([
-
-                'warehouses' => $warehouses,
-
-                'suppliers' => $suppliers,
-
+        if ($user_auth->is_all_warehouses) {
+            $warehouses = Warehouse::where("deleted_at", "=", null)->get([
+                "id",
+                "name",
             ]);
+        } else {
+            $warehouses_id = UserWarehouse::where("user_id", $user_auth->id)
+                ->pluck("warehouse_id")
+                ->toArray();
 
+            $warehouses = Warehouse::where("deleted_at", "=", null)
+                ->whereIn("id", $warehouses_id)
+                ->get(["id", "name"]);
         }
 
-       
+        $suppliers = Provider::where("deleted_at", "=", null)->get([
+            "id",
+            "name",
+        ]);
 
-       
+        return response()->json([
+            "warehouses" => $warehouses,
 
-        //------ store_import_purchases -------------\\
+            "suppliers" => $suppliers,
+        ]);
+    }
 
-    
+    //------ store_import_purchases -------------\\
 
-        public function store_import_purchases(Request $request)
+    public function store_import_purchases(Request $request)
+    {
+        $this->authorizeForUser(
+            $request->user("api"),
+            "create",
+            Purchase::class
+        );
 
-        {
+        $data = $this->request_products_csv($request);
 
-            $this->authorizeForUser($request->user('api'), 'create', Purchase::class);
+        request()->validate([
+            "supplier_id" => "required",
 
-    
+            "warehouse_id" => "required",
+        ]);
 
-            $data = $this->request_products_csv($request);
+        \DB::transaction(function () use ($request, $data) {
+            $order = new Purchase();
 
-    
+            $order->date = $request->date;
 
-            request()->validate([
+            $order->time = now()->toTimeString();
 
-                'supplier_id' => 'required',
+            $order->Ref = $this->getNumberOrder();
 
-                'warehouse_id' => 'required',
+            $order->provider_id = $request->supplier_id;
 
-            ]);
+            $order->GrandTotal = 0;
 
-    
+            $order->warehouse_id = $request->warehouse_id;
 
-            \DB::transaction(function () use ($request, $data) {
+            $order->tax_rate = $request->tax_rate;
 
-                $order = new Purchase;
+            $order->TaxNet = 0;
 
-    
+            $order->discount = $request->discount;
 
-                $order->date         = $request->date;
+            $order->shipping = $request->shipping;
 
-                $order->time         = now()->toTimeString();
+            $order->statut = $request->statut;
 
-                $order->Ref          = $this->getNumberOrder();
+            $order->payment_statut = "unpaid";
 
-                $order->provider_id  = $request->supplier_id;
+            $order->notes = $request->notes;
 
-                $order->GrandTotal   = 0;
+            $order->user_id = Auth::user()->id;
 
-                $order->warehouse_id = $request->warehouse_id;
+            $order->save();
 
-                $order->tax_rate     = $request->tax_rate;
+            $total = 0;
 
-                $order->TaxNet       = 0;
+            foreach ($data as $key => $value) {
+                $product = Product::where("deleted_at", "=", null)
+                    ->where("code", $value["productcode"])
+                    ->first();
 
-                $order->discount     = $request->discount;
+                $unit = Unit::where("id", $product->unit_purchase_id)->first();
 
-                $order->shipping     = $request->shipping;
+                $total += $value["qty"] * $product->cost;
 
-                $order->statut       = $request->statut;
+                $orderDetails[] = [
+                    "purchase_id" => $order->id,
 
-                $order->payment_statut = 'unpaid';
+                    "quantity" => $value["qty"],
 
-                $order->notes          = $request->notes;
+                    "cost" => $product->cost,
 
-                $order->user_id        = Auth::user()->id;
+                    "purchase_unit_id" => $product->unit_purchase_id,
 
-    
+                    "TaxNet" => 0,
 
-                $order->save();
+                    "tax_method" => 1,
 
-    
+                    "discount" => 0,
 
-                $total = 0;
+                    "discount_method" => 2,
 
-                foreach ($data as $key => $value) {
+                    "product_id" => $product->id,
 
-    
+                    "product_variant_id" => null,
 
-                    $product = Product::where('deleted_at', '=', null)->where('code', $value['productcode'])->first();
+                    "total" => $value["qty"] * $product->cost,
 
-                    $unit = Unit::where('id', $product->unit_purchase_id)->first();
+                    "imei_number" => null,
+                ];
 
-    
-
-                    $total += $value['qty'] * $product->cost;
-
-    
-
-                    $orderDetails[] = [
-
-                        'purchase_id'      => $order->id,
-
-                        'quantity'         => $value['qty'],
-
-                        'cost'             => $product->cost,
-
-                        'purchase_unit_id' => $product->unit_purchase_id,
-
-                        'TaxNet'           => 0,
-
-                        'tax_method'       => 1,
-
-                        'discount'         => 0,
-
-                        'discount_method'  => 2,
-
-                        'product_id'         => $product->id,
-
-                        'product_variant_id' => NULL,
-
-                        'total'              => $value['qty'] * $product->cost,
-
-                        'imei_number'        => NULL,
-
-                    ];
-
-    
-
-                    if ($order->statut == "received") {
-
-                        
-
-                        $product_warehouse = product_warehouse::where('deleted_at', '=', null)
-
-                            ->where('warehouse_id', $order->warehouse_id)
-
-                            ->where('product_id', $product->id)
-
-                            ->first();
-
-    
-
-                        if ($unit && $product_warehouse) {
-
-                            if ($unit->operator == '/') {
-
-                                $product_warehouse->qte += $value['qty'] / $unit->operator_value;
-
-                            } else {
-
-                                $product_warehouse->qte += $value['qty'] * $unit->operator_value;
-
-                            }
-
-                            $product_warehouse->save();
-
+                if ($order->statut == "received") {
+                    $product_warehouse = product_warehouse::where(
+                        "deleted_at",
+                        "=",
+                        null
+                    )
+
+                        ->where("warehouse_id", $order->warehouse_id)
+
+                        ->where("product_id", $product->id)
+
+                        ->first();
+
+                    if ($unit && $product_warehouse) {
+                        if ($unit->operator == "/") {
+                            $product_warehouse->qte +=
+                                $value["qty"] / $unit->operator_value;
+                        } else {
+                            $product_warehouse->qte +=
+                                $value["qty"] * $unit->operator_value;
                         }
 
+                        $product_warehouse->save();
                     }
-
                 }
+            }
 
-                PurchaseDetail::insert($orderDetails);
+            PurchaseDetail::insert($orderDetails);
 
-    
+            //  Calculte Grand_Total
 
-    
+            $purchase_data = Purchase::where("id", $order->id)->first();
 
-                //  Calculte Grand_Total
+            $total_without_discount = $total - $purchase_data->discount;
 
-                $purchase_data = Purchase::where('id', $order->id)->first();
+            $TaxNet =
+                ($total_without_discount * $purchase_data->tax_rate) / 100;
 
-    
+            $purchase_data->TaxNet = $TaxNet;
 
-                $total_without_discount = $total - $purchase_data->discount;
+            $purchase_data->GrandTotal =
+                $total_without_discount + $TaxNet + $purchase_data->shipping;
 
-    
+            $purchase_data->save();
+        }, 10);
 
-                $TaxNet = ($total_without_discount * $purchase_data->tax_rate) / 100;
+        return response()->json([
+            "success" => true,
+            "message" => "Purchase Created !!",
+        ]);
+    }
 
-    
+    // import Products
 
-                $purchase_data->TaxNet = $TaxNet;
+    public function request_products_csv(Request $request)
+    {
+        ini_set("max_execution_time", 2000);
 
-    
-
-                $purchase_data->GrandTotal = $total_without_discount + $TaxNet + $purchase_data->shipping;
-
-                $purchase_data->save();
-
-            
-
-    
-
-            }, 10);
-
-    
-
-            return response()->json(['success' => true, 'message' => 'Purchase Created !!']);
-
-        }
-
-
-
-
-
-        // import Products
-
-       public function request_products_csv(Request $request)
-
-       {
-
-
-
-        ini_set('max_execution_time', 2000);
-
-       
-
-        $file = $request->file('products');
+        $file = $request->file("products");
 
         $ext = pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION);
 
-        if ($ext != 'csv') {
-
+        if ($ext != "csv") {
             return response()->json([
+                "msg" => "must be in csv format",
 
-                'msg' => 'must be in csv format',
-
-                'status' => false,
-
+                "status" => false,
             ]);
-
         } else {
-
             // Read the CSV file
 
             $data = [];
@@ -3444,288 +2967,229 @@ class PurchasesController extends BaseController
             $rowcount = 0;
 
             if (($handle = fopen($file->getPathname(), "r")) !== false) {
+                $max_line_length = defined("MAX_LINE_LENGTH")
+                    ? MAX_LINE_LENGTH
+                    : 10000;
 
-                $max_line_length = defined('MAX_LINE_LENGTH') ? MAX_LINE_LENGTH : 10000;
-
-                $header = fgetcsv($handle, $max_line_length, ';'); // Use semicolon as the delimiter
-
-
+                $header = fgetcsv($handle, $max_line_length, ";"); // Use semicolon as the delimiter
 
                 // Process the header row
 
                 $escapedHeader = [];
 
                 foreach ($header as $key => $value) {
-
                     $lheader = strtolower($value);
 
-                    $escapedItem = preg_replace('/[^a-z]/', '', $lheader);
+                    $escapedItem = preg_replace("/[^a-z]/", "", $lheader);
 
                     $escapedHeader[] = $escapedItem;
-
                 }
-
-
 
                 $header_colcount = count($header);
 
-                while (($row = fgetcsv($handle, $max_line_length, ';')) !== false) { // Use semicolon as the delimiter
+                while (
+                    ($row = fgetcsv($handle, $max_line_length, ";")) !== false
+                ) {
+                    // Use semicolon as the delimiter
 
                     $row_colcount = count($row);
 
                     if ($row_colcount == $header_colcount) {
-
                         $entry = array_combine($escapedHeader, $row);
 
                         $data[] = $entry;
-
                     } else {
-
                         return null;
-
                     }
 
                     $rowcount++;
-
                 }
 
                 fclose($handle);
-
             } else {
-
                 return null;
-
             }
 
+            // Clean the data
 
+            $cleanedData = [];
 
+            foreach ($data as $row) {
+                $cleanedRow = [];
 
+                foreach ($row as $key => $value) {
+                    $cleanedKey = trim($key);
 
-               // Clean the data
+                    $cleanedRow[$cleanedKey] = $value;
+                }
 
-               $cleanedData = [];
+                $cleanedData[] = $cleanedRow;
+            }
 
-               foreach ($data as $row) {
+            // Check for duplicate productcode in CSV
 
-                   $cleanedRow = [];
+            $productCodes = array_column($cleanedData, "productcode");
 
-                   foreach ($row as $key => $value) {
+            if (count($productCodes) !== count(array_unique($productCodes))) {
+                return response()->json([
+                    "msg" => "Duplicate product code found in CSV file",
 
-                       $cleanedKey = trim($key);
+                    "status" => false,
+                ]);
+            }
 
-                       $cleanedRow[$cleanedKey] = $value;
+            // Validate productcode existence in the database
 
-                   }
+            $missingProductCodes = [];
 
-                   $cleanedData[] = $cleanedRow;
+            foreach ($productCodes as $code) {
+                if (!Product::where("code", $code)->exists()) {
+                    $missingProductCodes[] = $code;
+                }
+            }
 
-               }
+            if (!empty($missingProductCodes)) {
+                return response()->json([
+                    "msg" =>
+                        "The following product codes do not exist in the database: " .
+                        implode(", ", $missingProductCodes),
 
+                    "status" => false,
+                ]);
+            }
 
+            // Define validation rules
 
-       
+            $rules = [];
 
-               // Check for duplicate productcode in CSV
+            foreach ($cleanedData as $index => $row) {
+                $rules[$index . ".productcode"] = "required";
 
-               $productCodes = array_column($cleanedData, 'productcode');
+                $rules[$index . ".qty"] = "required|numeric";
+            }
 
-               if (count($productCodes) !== count(array_unique($productCodes))) {
+            // Validate the data
 
-                   return response()->json([
+            $validator = validator()->make($cleanedData, $rules);
 
-                       'msg' => 'Duplicate product code found in CSV file',
+            if ($validator->fails()) {
+                return response()->json([
+                    "msg" => "Validation failed",
 
-                       'status' => false,
+                    "errors" => $validator->errors(),
 
-                   ]);
+                    "status" => false,
+                ]);
+            }
 
-               }
+            // Return the cleaned data
 
-       
-
-               // Validate productcode existence in the database
-
-               $missingProductCodes = [];
-
-               foreach ($productCodes as $code) {
-
-                   if (!Product::where('code', $code)->exists()) {
-
-                       $missingProductCodes[] = $code;
-
-                   }
-
-               }
-
-       
-
-               if (!empty($missingProductCodes)) {
-
-                   return response()->json([
-
-                       'msg' => 'The following product codes do not exist in the database: ' . implode(', ', $missingProductCodes),
-
-                       'status' => false,
-
-                   ]);
-
-               }
-
-       
-
-               // Define validation rules
-
-               $rules = [];
-
-               foreach ($cleanedData as $index => $row) {
-
-                   $rules[$index . '.productcode'] = 'required';
-
-                   $rules[$index . '.qty'] = 'required|numeric';
-
-               }
-
-       
-
-               // Validate the data
-
-               $validator = validator()->make($cleanedData, $rules);
-
-       
-
-               if ($validator->fails()) {
-
-                   return response()->json([
-
-                       'msg' => 'Validation failed',
-
-                       'errors' => $validator->errors(),
-
-                       'status' => false,
-
-                   ]);
-
-               }
-
-       
-
-               // Return the cleaned data
-
-               return $cleanedData;
-
-          
-
-           }
-
-       }
-
-
+            return $cleanedData;
+        }
+    }
 
     //---------------- Scan Barcode for Purchase Detail ----------------\\
 
-
-
-    public function scanBarcode(Request $request) 
-
+    public function scanBarcode(Request $request)
     {
-
-        $this->authorizeForUser($request->user('api'), 'update', Purchase::class);
-
-
+        $this->authorizeForUser(
+            $request->user("api"),
+            "update",
+            Purchase::class
+        );
 
         $request->validate([
+            "purchase_id" => "required|exists:purchase_details,id",
 
-            'purchase_id' => 'required|exists:purchase_details,id',
+            "barcode" => "required|string",
 
-            'barcode' => 'required|string',
-
-            'type' => 'nullable|in:indoor,outdoor',
-
+            "type" => "nullable|in:indoor,outdoor",
         ]);
 
-
-
-        $detail = PurchaseDetail::with('product.category')->findOrFail($request->purchase_id);
+        $detail = PurchaseDetail::with("product.category")->findOrFail(
+            $request->purchase_id
+        );
 
         $purchase = Purchase::findOrFail($detail->purchase_id);
 
-
-
-        $product = Product::where('serial_number', $detail->product->serial_number)->first();
+        $product = Product::where(
+            "serial_number",
+            $detail->product->serial_number
+        )->first();
 
         if (!$product) {
-
-            return response()->json(['success' => false, 'message' => 'Product Serial number not found.'], 404);
-
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" => "Product Serial number not found.",
+                ],
+                404
+            );
         }
-
-
 
         // Barcode must start with product code
 
         if (strpos($request->barcode, $product->serial_number) !== 0) {
+            return response()->json(
+                [
+                    "success" => false,
 
-            return response()->json([
-
-                'success' => false,
-
-                'message' => 'Invalid barcode. It does not match product Serial number series.'
-
-            ], 400);
-
+                    "message" =>
+                        "Invalid barcode. It does not match product Serial number series.",
+                ],
+                400
+            );
         }
-
-
 
         // Warehouse product
 
-        $warehouseProduct = product_warehouse::firstOrCreate([
+        $warehouseProduct = product_warehouse::firstOrCreate(
+            [
+                "product_id" => $product->id,
 
-            'product_id' => $product->id,
+                "warehouse_id" => $purchase->warehouse_id,
+            ],
+            [
+                "qte" => 0,
 
-            'warehouse_id' => $purchase->warehouse_id,
-
-        ], [
-
-            'qte' => 0,
-
-            'manage_stock' => 1
-
-        ]);
-
-
+                "manage_stock" => 1,
+            ]
+        );
 
         $categoryCode = $detail->product->category->code ?? null;
 
-
-
         // Must be received
 
-        if (!in_array($purchase->statut, ['received'])) {
-
-            return response()->json(['success' => false, 'message' => 'Purchase must be received to scan barcodes.'], 400);
-
+        if (!in_array($purchase->statut, ["received"])) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" => "Purchase must be received to scan barcodes.",
+                ],
+                400
+            );
         }
-
-
 
         // Check duplicate barcode
 
-        $existingBarcode = PurchaseBarcodeScan::where('barcode', $request->barcode)
+        $existingBarcode = PurchaseBarcodeScan::where(
+            "barcode",
+            $request->barcode
+        )
 
-            ->where('purchase_detail_id', $detail->id)
+            ->where("purchase_detail_id", $detail->id)
 
             ->exists();
 
-
-
         if ($existingBarcode) {
-
-            return response()->json(['success' => false, 'message' => 'This barcode has already been scanned.'], 400);
-
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" => "This barcode has already been scanned.",
+                ],
+                400
+            );
         }
-
-
 
         // ===============================
 
@@ -3733,147 +3197,132 @@ class PurchasesController extends BaseController
 
         // ===============================
 
-
-
-        if ($categoryCode == '123') {
-
-
-
+        if ($categoryCode == "123") {
             if (!$request->type) {
-
-                return response()->json(['success' => false, 'message' => 'Type (indoor/outdoor) is required for this category.'], 400);
-
+                return response()->json(
+                    [
+                        "success" => false,
+                        "message" =>
+                            "Type (indoor/outdoor) is required for this category.",
+                    ],
+                    400
+                );
             }
-
-            
 
             // Count existing scans by type
 
-            $indoorScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)
+            $indoorScans = PurchaseBarcodeScan::where(
+                "purchase_detail_id",
+                $detail->id
+            )
 
-                ->where('type', 'indoor')
-
-                ->count();
-
-            $outdoorScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)
-
-                ->where('type', 'outdoor')
+                ->where("type", "indoor")
 
                 ->count();
 
+            $outdoorScans = PurchaseBarcodeScan::where(
+                "purchase_detail_id",
+                $detail->id
+            )
 
+                ->where("type", "outdoor")
+
+                ->count();
 
             $maxQty = $detail->quantity;
 
-
-
             // Check if scanning exceeds allowed per type
 
-            if ($request->type == 'indoor' && $indoorScans >= $maxQty) {
-
-                return response()->json(['success' => false, 'message' => 'Cannot scan more indoor barcodes than ordered quantity.'], 400);
-
+            if ($request->type == "indoor" && $indoorScans >= $maxQty) {
+                return response()->json(
+                    [
+                        "success" => false,
+                        "message" =>
+                            "Cannot scan more indoor barcodes than ordered quantity.",
+                    ],
+                    400
+                );
             }
 
-
-
-            if ($request->type == 'outdoor' && $outdoorScans >= $maxQty) {
-
-                return response()->json(['success' => false, 'message' => 'Cannot scan more outdoor barcodes than ordered quantity.'], 400);
-
+            if ($request->type == "outdoor" && $outdoorScans >= $maxQty) {
+                return response()->json(
+                    [
+                        "success" => false,
+                        "message" =>
+                            "Cannot scan more outdoor barcodes than ordered quantity.",
+                    ],
+                    400
+                );
             }
-
-
 
             $oldUnits = floor(($indoorScans + $outdoorScans) / 2);
-
-
 
             // Save scan
 
             PurchaseBarcodeScan::create([
+                "purchase_detail_id" => $detail->id,
 
-                'purchase_detail_id' => $detail->id,
+                "barcode" => $request->barcode,
 
-                'barcode' => $request->barcode,
-
-                'type' => $request->type,
-
+                "type" => $request->type,
             ]);
 
+            $indoorScans =
+                $request->type == "indoor" ? $indoorScans + 1 : $indoorScans;
 
-
-            $indoorScans = $request->type == 'indoor' ? $indoorScans + 1 : $indoorScans;
-
-            $outdoorScans = $request->type == 'outdoor' ? $outdoorScans + 1 : $outdoorScans;
-
-
+            $outdoorScans =
+                $request->type == "outdoor" ? $outdoorScans + 1 : $outdoorScans;
 
             $totalScans = $indoorScans + $outdoorScans;
 
             $newUnits = floor($totalScans / 2);
 
-
-
             // Difference = how many NEW units formed
 
             $increment = $newUnits - $oldUnits;
 
-
-
             if ($increment > 0) {
-
                 $warehouseProduct->qte += $increment;
 
                 $warehouseProduct->save();
-
             }
 
-
-
-            return response()->json(['success' => true, 'message' => 'Barcode scanned successfully.', 'received_quantity' => $newUnits]);
-
+            return response()->json([
+                "success" => true,
+                "message" => "Barcode scanned successfully.",
+                "received_quantity" => $newUnits,
+            ]);
         }
 
-
-
         // ================================
-
         // NORMAL PRODUCTS (each scan = +1)
-
         // ================================
-
-
-
         else {
-
-
-
-            $existingScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->count();
-
-
+            $existingScans = PurchaseBarcodeScan::where(
+                "purchase_detail_id",
+                $detail->id
+            )->count();
 
             if ($existingScans >= $detail->quantity) {
-
-                return response()->json(['success' => false, 'message' => 'Cannot scan more barcodes than ordered quantity.'], 400);
-
+                return response()->json(
+                    [
+                        "success" => false,
+                        "message" =>
+                            "Cannot scan more barcodes than ordered quantity.",
+                    ],
+                    400
+                );
             }
-
-
 
             // Save scan
 
             PurchaseBarcodeScan::create([
+                "purchase_detail_id" => $detail->id,
 
-                'purchase_detail_id' => $detail->id,
+                "barcode" => $request->barcode,
 
-                'barcode' => $request->barcode,
-
-                'type' => null,
-
+                "type" => null,
             ]);
-
-
 
             // Increment warehouse qty by 1
 
@@ -3881,315 +3330,214 @@ class PurchasesController extends BaseController
 
             $warehouseProduct->save();
 
-
-
-            return response()->json(['success' => true, 'message' => 'Barcode scanned successfully.', 'received_quantity' => $existingScans + 1]);
-
+            return response()->json([
+                "success" => true,
+                "message" => "Barcode scanned successfully.",
+                "received_quantity" => $existingScans + 1,
+            ]);
         }
-
     }
-
-
-
-
-
-
 
     //---------------- Bulk Scan Barcodes for Purchase Detail ----------------\\
 
-
-
     public function bulkScanBarcodes(Request $request)
-
     {
-
-        $this->authorizeForUser($request->user('api'), 'update', Purchase::class);
-
-
+        $this->authorizeForUser(
+            $request->user("api"),
+            "update",
+            Purchase::class
+        );
 
         $request->validate([
+            "purchase_detail_id" => "required|exists:purchase_details,id",
 
-            'purchase_detail_id' => 'required|exists:purchase_details,id',
+            "barcodes" => "required|array",
 
-            'barcodes' => 'required|array',
+            "barcodes.*.barcode" => "required|string",
 
-            'barcodes.*.barcode' => 'required|string',
-
-            'barcodes.*.type' => 'nullable|in:indoor,outdoor',
-
+            "barcodes.*.type" => "nullable|in:indoor,outdoor",
         ]);
 
-
-
-        $detail = PurchaseDetail::with('product.category')->findOrFail($request->purchase_detail_id);
+        $detail = PurchaseDetail::with("product.category")->findOrFail(
+            $request->purchase_detail_id
+        );
 
         $categoryCode = $detail->product->category->code ?? null;
-
-
 
         // Check if purchase is in received status or ordered
 
         $purchase = Purchase::findOrFail($detail->purchase_id);
 
-        if (!in_array($purchase->statut, ['ordered', 'received'])) {
-
-            return response()->json(['success' => false, 'message' => 'Purchase must be ordered or received to scan barcodes.'], 400);
-
+        if (!in_array($purchase->statut, ["ordered", "received"])) {
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" =>
+                        "Purchase must be ordered or received to scan barcodes.",
+                ],
+                400
+            );
         }
-
-
 
         $scannedBarcodes = [];
 
         $errors = [];
 
-
-
-        if ($categoryCode == '123') {
-
+        if ($categoryCode == "123") {
             // Requires both indoor and outdoor scans per unit
 
             // Get existing counts
 
-            $indoorScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)
+            $indoorScans = PurchaseBarcodeScan::where(
+                "purchase_detail_id",
+                $detail->id
+            )
 
-                ->where('type', 'indoor')
-
-                ->count();
-
-            $outdoorScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)
-
-                ->where('type', 'outdoor')
+                ->where("type", "indoor")
 
                 ->count();
 
+            $outdoorScans = PurchaseBarcodeScan::where(
+                "purchase_detail_id",
+                $detail->id
+            )
 
+                ->where("type", "outdoor")
+
+                ->count();
 
             $maxUnits = floor($detail->quantity);
 
-
-
             foreach ($request->barcodes as $barcodeData) {
+                $barcode = $barcodeData["barcode"];
 
-                $barcode = $barcodeData['barcode'];
-
-                $type = $barcodeData['type'] ?? null;
-
-
+                $type = $barcodeData["type"] ?? null;
 
                 if (!$type) {
-
                     $errors[] = "Type (indoor/outdoor) is required for barcode $barcode.";
 
                     continue;
-
                 }
 
+                $existingBarcode = PurchaseBarcodeScan::where(
+                    "barcode",
+                    $barcode
+                )
 
-
-                $existingBarcode = PurchaseBarcodeScan::where('barcode', $barcode)
-
-                    ->where('purchase_detail_id', $detail->id)
+                    ->where("purchase_detail_id", $detail->id)
 
                     ->exists();
 
-
-
                 if ($existingBarcode) {
-
                     $errors[] = "Barcode $barcode has already been scanned.";
 
                     continue;
-
                 }
 
-
-
-                if ($type == 'indoor') {
-
+                if ($type == "indoor") {
                     if ($indoorScans >= $maxUnits) {
-
                         $errors[] = "Cannot scan more indoor barcodes than ordered quantity for $barcode.";
 
                         continue;
-
                     }
 
                     $indoorScans++;
-
                 } else {
-
                     if ($outdoorScans >= $maxUnits) {
-
                         $errors[] = "Cannot scan more outdoor barcodes than ordered quantity for $barcode.";
 
                         continue;
-
                     }
 
                     $outdoorScans++;
-
                 }
-
-
 
                 // Save the scan
 
                 PurchaseBarcodeScan::create([
+                    "purchase_detail_id" => $detail->id,
 
-                    'purchase_detail_id' => $detail->id,
+                    "barcode" => $barcode,
 
-                    'barcode' => $barcode,
-
-                    'type' => $type,
-
+                    "type" => $type,
                 ]);
 
-
-
-                $scannedBarcodes[] = ['barcode' => $barcode, 'type' => $type];
-
+                $scannedBarcodes[] = ["barcode" => $barcode, "type" => $type];
             }
-
-
 
             // Recalculate received_quantity: min of indoor and outdoor scans
 
             $detail->received_quantity = min($indoorScans, $outdoorScans);
 
             $detail->save();
-
-
-
         } else {
-
             // Normal scan: each scan increments by 1
 
-            $existingScans = PurchaseBarcodeScan::where('purchase_detail_id', $detail->id)->count();
-
-
+            $existingScans = PurchaseBarcodeScan::where(
+                "purchase_detail_id",
+                $detail->id
+            )->count();
 
             foreach ($request->barcodes as $barcodeData) {
+                $barcode = $barcodeData["barcode"];
 
-                $barcode = $barcodeData['barcode'];
+                $existingBarcode = PurchaseBarcodeScan::where(
+                    "barcode",
+                    $barcode
+                )
 
-
-
-                $existingBarcode = PurchaseBarcodeScan::where('barcode', $barcode)
-
-                    ->where('purchase_detail_id', $detail->id)
+                    ->where("purchase_detail_id", $detail->id)
 
                     ->exists();
 
-
-
                 if ($existingBarcode) {
-
                     $errors[] = "Barcode $barcode has already been scanned.";
 
                     continue;
-
                 }
-
-
-
                 if ($existingScans >= $detail->quantity) {
-
                     $errors[] = "Cannot scan more barcodes than ordered quantity for $barcode.";
 
                     continue;
-
                 }
-
-
-
                 // Save the scan
-
                 PurchaseBarcodeScan::create([
-
-                    'purchase_detail_id' => $detail->id,
-
-                    'barcode' => $barcode,
-
-                    'type' => null,
-
+                    "purchase_detail_id" => $detail->id,
+                    "barcode" => $barcode,
+                    "type" => null,
                 ]);
-
-
-
                 $existingScans++;
-
-                $scannedBarcodes[] = ['barcode' => $barcode, 'type' => null];
-
+                $scannedBarcodes[] = ["barcode" => $barcode, "type" => null];
             }
-
-
-
             $detail->received_quantity = $existingScans;
-
             $detail->save();
-
         }
-
-
-
         // Check if all purchase details are fully received
-
-        $purchase = Purchase::with('details')->findOrFail($detail->purchase_id);
-
+        $purchase = Purchase::with("details")->findOrFail($detail->purchase_id);
         $allReceived = $purchase->details->every(function ($d) {
-
             return $d->received_quantity >= $d->quantity;
-
         });
-
-        if ($allReceived && $purchase->statut !== 'received') {
-
-            $purchase->statut = 'received';
-
+        if ($allReceived && $purchase->statut !== "received") {
+            $purchase->statut = "received";
             $purchase->save();
-
         }
-
-
-
         if (!empty($errors)) {
-
-            return response()->json([
-
-                'success' => false,
-
-                'message' => 'Some barcodes could not be scanned.',
-
-                'errors' => $errors,
-
-                'scanned' => $scannedBarcodes,
-
-                'received_quantity' => $detail->received_quantity
-
-            ], 400);
-
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" => "Some barcodes could not be scanned.",
+                    "errors" => $errors,
+                    "scanned" => $scannedBarcodes,
+                    "received_quantity" => $detail->received_quantity,
+                ],
+                400
+            );
         }
-
-
-
         return response()->json([
-
-            'success' => true,
-
-            'message' => 'Barcodes scanned successfully.',
-
-            'scanned' => $scannedBarcodes,
-
-            'received_quantity' => $detail->received_quantity
-
+            "success" => true,
+            "message" => "Barcodes scanned successfully.",
+            "scanned" => $scannedBarcodes,
+            "received_quantity" => $detail->received_quantity,
         ]);
-
     }
-
-
-
-
-
 }
-

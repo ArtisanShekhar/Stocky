@@ -540,10 +540,24 @@
 
           <b-card class="p-3">
 
-            <h5>
+          <h5 class="d-flex justify-content-between align-items-center">
+
+            <span>
               {{ item.name }}
               <small class="text-muted">({{ item.code }})</small>
-            </h5>
+            </span>
+
+            <span v-if="item.category_id === '123'" class="text-muted">
+              Indoor: {{ item.indoor_quantity }} |
+              Outdoor: {{ item.outdoor_quantity }}
+            </span>
+
+            <span v-else class="text-muted">
+              Total: {{ item.total_quantity }}
+            </span>
+
+          </h5>
+
 
             <b-form-group :label="'Barcode for ' + item.name">
               <div class="input-group">
@@ -569,6 +583,8 @@
                 <b-form-radio value="outdoor">Outdoor</b-form-radio>
               </b-form-radio-group>
             </b-form-group>
+
+
 
           </b-card>
 
@@ -1559,6 +1575,9 @@ export default {
           category_id: d.category_code,  // FIXED
           scan_barcode: "",
           scan_type: null,
+          indoor_quantity: d.indoor_scans || 0,
+          outdoor_quantity: d.outdoor_scans || 0,
+          total_quantity: d.total_scans || 0,
         };
       });
       this.currentScanItem = null;

@@ -725,7 +725,7 @@
     </validation-observer>
 
     <!-- Modal Show Invoice POS-->
-    <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')">
+    <!-- <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Invoice_POS')">
         <div id="invoice-POS">
           <div style="max-width:400px;margin:0px auto">
           <div class="info" >
@@ -740,6 +740,23 @@
                 <span v-show="pos_settings.show_phone">{{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}} <br></span>
                 <span v-show="pos_settings.show_customer">{{$t('Customer')}} : {{invoice_pos.sale.client_name}} <br></span>
                 <span v-show="pos_settings.show_Warehouse">{{$t('warehouse')}} : {{invoice_pos.sale.warehouse_name}} <br></span>
+                  <span v-if="invoice_pos.sale.irn_number">IRN No : {{invoice_pos.sale.irn_number}} <br></span>
+                <span v-if="invoice_pos.sale.ack_no">Ack No : {{invoice_pos.sale.ack_no}} <br></span>
+                <span v-if="invoice_pos.sale.ack_date">Ack Date : {{invoice_pos.sale.ack_date}} <br></span>
+                <span v-if="invoice_pos.sale.invoice_number">Invoice No : {{invoice_pos.sale.invoice_number}} <br></span>
+                <span v-if="invoice_pos.sale.dated">Dated : {{invoice_pos.sale.dated}} <br></span>
+                <span v-if="invoice_pos.sale.delivery_note">Delivery Note : {{invoice_pos.sale.delivery_note}} <br></span>
+                <span v-if="invoice_pos.sale.mode_terms_payment">Mode / Terms of Payment : {{invoice_pos.sale.mode_terms_payment}} <br></span>
+                <span v-if="invoice_pos.sale.reference_no">Reference No : {{invoice_pos.sale.reference_no}} <br></span>
+                <span v-if="invoice_pos.sale.reference_date">Reference Date : {{invoice_pos.sale.reference_date}} <br></span>
+                <span v-if="invoice_pos.sale.other_references">Other References : {{invoice_pos.sale.other_references}} <br></span>
+                <span v-if="invoice_pos.sale.buyers_order_no">Buyer Order No : {{invoice_pos.sale.buyers_order_no}} <br></span>
+                <span v-if="invoice_pos.sale.order_dated">Order Dated : {{invoice_pos.sale.order_dated}} <br></span>
+                <span v-if="invoice_pos.sale.dispatch_doc_no">Dispatch Doc. No : {{invoice_pos.sale.dispatch_doc_no}} <br></span>
+                <span v-if="invoice_pos.sale.delivery_note_date">Delivery Note Date : {{invoice_pos.sale.delivery_note_date}} <br></span>
+                <span v-if="invoice_pos.sale.dispatched_through">Dispatched Through : {{invoice_pos.sale.dispatched_through}} <br></span>
+                <span v-if="invoice_pos.sale.destination">Destination : {{invoice_pos.sale.destination}} <br></span>
+                <span v-if="invoice_pos.sale.terms_of_delivery">Terms of Delivery : {{invoice_pos.sale.terms_of_delivery}} <br></span>
               </p>
           </div>
 
@@ -846,16 +863,175 @@
         <i class="i-Billing"></i>
         {{$t('print')}}
       </button>
-    </b-modal>
-     <!-- <b-modal hide-footer id="sale_barcode_scanner" size="md" title="Barcode Scanner">
-      <qrcode-scanner
-        :qrbox="250"
-        :fps="10"
-        style="width: 100%; height: calc(100vh - 56px);"
-        @result="onPurchaseScan"
-      />
     </b-modal> -->
-    <!-- Modal Scan Barcode -->
+    <b-modal hide-footer  scrollable id="Show_invoice" :title="$t('Invoice_POS')">
+    <div id="invoice-POS">
+      <div style="max-width:400px;margin:0px auto">
+        <!-- ===== HEADER ===== -->
+        <div class="info">
+          <div class="invoice_logo text-center mb-2">
+            <img :src="'/images/'+invoice_pos.setting.logo" alt width="60" height="60">
+          </div>
+
+          <!-- ===== HEADER (TWO COLUMN: SELLER LEFT + CUSTOM RIGHT ) ===== -->
+          <table width="100%" border="1" cellspacing="0" cellpadding="3"
+            style="border-collapse: collapse; font-size:11px; margin-bottom:5px;">
+            <tr>
+              <!-- LEFT: SELLER DETAILS -->
+              <td width="50%" style="vertical-align: top;">
+                <b>{{$t('Seller')}}</b> : {{invoice_pos.sale.seller_name}} <br>
+                <span v-show="pos_settings.show_address">{{$t('Adress')}} : {{invoice_pos.setting.CompanyAdress}}</span><br>
+                <span v-show="pos_settings.show_email">{{$t('Email')}} : {{invoice_pos.setting.email}}</span><br>
+                <span v-show="pos_settings.show_phone">{{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}}</span><br>
+                <span v-show="pos_settings.show_customer">{{$t('Customer')}} : <b>{{invoice_pos.sale.client_name}}</b></span><br>
+                <span v-show="pos_settings.show_Warehouse">{{$t('warehouse')}} : {{invoice_pos.sale.warehouse_name}}</span><br>
+              </td>
+
+              <!-- RIGHT: CUSTOM FIELDS -->
+              <td width="50%" style="vertical-align: top;">
+                <span v-if="invoice_pos.sale.Ref">IRN No : {{invoice_pos.sale.Ref}}</span><br>
+                <span v-if="invoice_pos.sale.ack_no">Ack No : {{invoice_pos.sale.ack_no}}</span><br>
+                <span v-if="invoice_pos.sale.ack_date">Ack Date : {{invoice_pos.sale.ack_date}}</span><br>
+                <span v-if="invoice_pos.sale.invoice_number">Invoice No : {{invoice_pos.sale.invoice_number}}</span><br>
+                <span v-if="invoice_pos.sale.dated">Dated : {{invoice_pos.sale.dated}}</span><br>
+                <span v-if="invoice_pos.sale.delivery_note">Delivery Note : {{invoice_pos.sale.delivery_note}}</span><br>
+                <span v-if="invoice_pos.sale.mode_terms_payment">Mode / Terms of Payment : {{invoice_pos.sale.mode_terms_payment}}</span><br>
+                <span v-if="invoice_pos.sale.reference_no">Reference No : {{invoice_pos.sale.reference_no}}</span><br>
+                <span v-if="invoice_pos.sale.reference_date">Reference Date : {{invoice_pos.sale.reference_date}}</span><br>
+                <span v-if="invoice_pos.sale.other_references">Other References : {{invoice_pos.sale.other_references}}</span><br>
+                <span v-if="invoice_pos.sale.buyers_order_no">Buyer Order No : {{invoice_pos.sale.buyers_order_no}}</span><br>
+                <span v-if="invoice_pos.sale.order_dated">Order Dated : {{invoice_pos.sale.order_dated}}</span><br>
+                <span v-if="invoice_pos.sale.dispatch_doc_no">Dispatch Doc. No : {{invoice_pos.sale.dispatch_doc_no}}</span><br>
+                <span v-if="invoice_pos.sale.delivery_note_date">Delivery Note Date : {{invoice_pos.sale.delivery_note_date}}</span><br>
+                <span v-if="invoice_pos.sale.dispatched_through">Dispatched Through : {{invoice_pos.sale.dispatched_through}}</span><br>
+                <span v-if="invoice_pos.sale.destination">Destination : {{invoice_pos.sale.destination}}</span><br>
+                <span v-if="invoice_pos.sale.terms_of_delivery">Terms of Delivery : {{invoice_pos.sale.terms_of_delivery}}</span><br>
+              </td>
+            </tr>
+          </table>
+
+        </div>
+
+        <!-- ===== GST STYLE TABLE ===== -->
+        <table width="100%" border="1" cellspacing="0" cellpadding="3"
+          style="border-collapse: collapse; font-size: 10px; margin-top:5px;">
+          <thead style="background:#eee; text-transform:uppercase; text-align:center;">
+            <tr>
+              <th>S.No</th>
+              <th>Description</th>
+              <th>HSN</th>
+              <th>GST%</th>
+              <th>Qty</th>
+              <th>Rate</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr v-for="(detail_invoice, index) in invoice_pos.details">
+              <td style="text-align:center;">{{ index+1 }}</td>
+              <td>
+                {{detail_invoice.name}}
+                <br v-if="detail_invoice.is_imei && detail_invoice.imei_number !==null">
+                <small v-if="detail_invoice.is_imei && detail_invoice.imei_number !==null">
+                  {{$t('IMEI_SN')}} : {{detail_invoice.imei_number}}
+                </small>
+              </td>
+              <td style="text-align:center;">
+                <!-- {{ detail_invoice.product.hsn }} -->
+              </td>
+              <td style="text-align:center;">{{ formatNumber(detail_invoice.tax_rate,2) }}</td>
+              <td style="text-align:center;">{{ formatNumber(detail_invoice.quantity,2) }}</td>
+              <td style="text-align:center;">{{ formatNumber(detail_invoice.total/detail_invoice.quantity,2) }}</td>
+              <td style="text-align:right;">{{ formatNumber(detail_invoice.total,2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ===== TOTALS BLOCK ===== -->
+        <table width="100%" style="font-size:10px; margin-top:6px;">
+          <tr>
+            <td><b>Taxable Value</b></td>
+            <td style="text-align:right;">{{ formatNumber(invoice_pos.sale.Total,2) }}</td>
+          </tr>
+          <tr v-show="pos_settings.show_discount">
+            <td><b>Order Tax</b></td>
+            <td style="text-align:right;">{{ formatNumber(invoice_pos.sale.taxe ,2) }} ({{ formatNumber(invoice_pos.sale.tax_rate,2) }}%)</td>
+          </tr>
+          <tr v-show="pos_settings.show_discount">
+            <td><b>Discount</b></td>
+            <td style="text-align:right;">{{ formatNumber(invoice_pos.sale.discount ,2) }}</td>
+          </tr>
+          <tr v-show="pos_settings.show_discount">
+            <td><b>Shipping</b></td>
+            <td style="text-align:right;">{{ formatNumber(invoice_pos.sale.shipping ,2) }}</td>
+          </tr>
+          <tr>
+            <td><b>Grand Total</b></td>
+            <td style="text-align:right;"><b>{{ formatNumber(invoice_pos.sale.GrandTotal ,2) }}</b></td>
+          </tr>
+          <tr v-show="invoice_pos.sale.paid_amount < invoice_pos.sale.GrandTotal">
+            <td><b>Paid</b></td>
+            <td style="text-align:right;">{{ formatNumber(invoice_pos.sale.paid_amount ,2) }}</td>
+          </tr>
+          <tr v-show="invoice_pos.sale.paid_amount < invoice_pos.sale.GrandTotal">
+            <td><b>Due</b></td>
+            <td style="text-align:right;">
+              {{ parseFloat(invoice_pos.sale.GrandTotal - invoice_pos.sale.paid_amount).toFixed(2) }}
+            </td>
+          </tr>
+        </table>
+
+        <!-- ===== PAYMENT SECTION ==== -->
+        <table class="change mt-3" style="font-size: 10px;" v-show="invoice_pos.sale.paid_amount > 0">
+          <thead>
+            <tr style="background: #eee;">
+              <th style="text-align: left;">{{$t('PayeBy')}}</th>
+              <th style="text-align: center;">{{$t('Amount')}}</th>
+              <th style="text-align: right;">{{$t('Change')}}</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr v-for="payment_pos in payments">
+              <td>{{payment_pos.payment_method ? payment_pos.payment_method.name : '---'}}</td>
+              <td style="text-align:center;">{{formatNumber(payment_pos.montant ,2)}}</td>
+              <td style="text-align:right;">{{formatNumber(payment_pos.change ,2)}}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div id="legalcopy" class="ml-2" style="font-size:9px;">
+          <p class="legal" v-show="pos_settings.show_note">
+            <strong>{{pos_settings.note_customer}}</strong>
+          </p>
+
+          <div id="bar" v-show="pos_settings.show_barcode" style="text-align:center;">
+            <barcode class="barcode"
+              :format="barcodeFormat"
+              :value="invoice_pos.sale.Ref"
+              textmargin="0"
+              fontoptions="bold"
+              fontSize= "15"
+              height= "25"
+              width= "1">
+            </barcode>
+          </div>
+
+          <p style="text-align:center;margin-top:5px;">This is a Computer Generated Invoice</p>
+        </div>
+
+      </div>
+    </div>
+
+    <button @click="print_it()" class="btn btn-outline-primary">
+      <i class="i-Billing"></i> {{$t('print')}}
+    </button>
+  </b-modal>
+
+    <!-- Modal Scan Barcode-->
+
+
 <b-modal 
   hide-footer 
   size="lg"
@@ -875,10 +1051,24 @@
 
           <b-card class="p-3">
 
-            <h5>
+            <h5 class="d-flex justify-content-between align-items-center">
+
+            <span>
               {{ item.name }}
               <small class="text-muted">({{ item.code }})</small>
-            </h5>
+            </span>
+
+            <span v-if="item.category_id === '123'" class="text-muted">
+              Indoor: {{ item.indoor_quantity }} |
+              Outdoor: {{ item.outdoor_quantity }}
+            </span>
+
+            <span v-else class="text-muted">
+              Total: {{ item.total_quantity }}
+            </span>
+
+          </h5>
+
 
             <b-form-group :label="'Barcode for ' + item.name">
               <div class="input-group">
@@ -1181,6 +1371,9 @@ data() {
             category_id: d.category_code,  // FIXED
             scan_barcode: "",
             scan_type: null,
+            indoor_quantity: d.indoor_scans || 0,
+            outdoor_quantity: d.outdoor_scans || 0,
+            total_quantity: d.total_scans || 0,
           };
         });
       this.currentScanItem = null;
@@ -1507,18 +1700,28 @@ data() {
       this.Get_Sales(this.serverParams.page);
     },
     //------------------------------Formetted Numbers -------------------------\\
-    formatNumber(number, dec) {
-      const value = (typeof number === "string"
-        ? number
-        : number.toString()
-      ).split(".");
-      if (dec <= 0) return value[0];
-      let formated = value[1] || "";
-      if (formated.length > dec)
-        return `${value[0]}.${formated.substr(0, dec)}`;
-      while (formated.length < dec) formated += "0";
-      return `${value[0]}.${formated}`;
-    },
+formatNumber(number, dec) {
+  if (number === null || number === undefined || number === "") {
+    return (0).toFixed(dec);
+  }
+
+  // make sure it's a valid number
+  number = parseFloat(number);
+  if (isNaN(number)) {
+    return (0).toFixed(dec);
+  }
+
+  const value = number.toString().split(".");
+  if (dec <= 0) return value[0];
+
+  let formatted = value[1] || "";
+  if (formatted.length > dec)
+    return `${value[0]}.${formatted.substr(0, dec)}`;
+
+  while (formatted.length < dec) formatted += "0";
+  return `${value[0]}.${formatted}`;
+},
+
 
     
     //----------------------------------- Sales PDF ------------------------------\\

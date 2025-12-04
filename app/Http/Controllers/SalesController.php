@@ -388,7 +388,6 @@ class SalesController extends BaseController
 
     public function store(Request $request)
     {
-
         $this->authorizeForUser($request->user('api'), 'create', Sale::class);
 
         request()->validate([
@@ -414,6 +413,24 @@ class SalesController extends BaseController
             $order->statut = $request->statut;
             $order->payment_statut = 'unpaid';
             $order->notes = $request->notes;
+            $order->irn_number = $request->irn_number;
+            $order->ack_no = $request->ack_no;
+            $order->ack_date = $request->ack_date;
+            $order->invoice_number = $request->invoice_number;
+            $order->dated = $request->dated;
+            $order->delivery_note = $request->delivery_note;
+            $order->mode_terms_of_payment = $request->mode_terms_of_payment;
+            $order->reference_no = $request->reference_no;
+            $order->reference_date = $request->reference_date;
+            $order->other_references = $request->other_references;
+            $order->buyers_order_no = $request->buyers_order_no;
+            $order->order_dated = $request->order_dated;
+            $order->dispatch_doc_no = $request->dispatch_doc_no;
+            $order->delivery_note_date = $request->delivery_note_date;
+            $order->dispatched_through = $request->dispatched_through;
+            $order->destination = $request->destination;
+            $order->terms_of_delivery = $request->terms_of_delivery;
+
             $order->user_id = Auth::user()->id;
             $order->save();
 
@@ -901,6 +918,23 @@ class SalesController extends BaseController
                     'used_points'    => $new_used,
                     'earned_points'  => $new_earned,
                     'discount_from_points'  => $request['discount_from_points'],
+                    'irn_number' => $request['irn_number'],
+                    'ack_no' => $request['ack_no'],
+                    'ack_date' => $request['ack_date'],
+                    'invoice_number' => $request['invoice_number'],
+                    'dated' => $request['dated'],
+                    'delivery_note' => $request['delivery_note'],
+                    'mode_terms_of_payment' => $request['mode_terms_of_payment'],
+                    'reference_no' => $request['reference_no'],
+                    'reference_date' => $request['reference_date'],
+                    'other_references' => $request['other_references'],
+                    'buyers_order_no' => $request['buyers_order_no'],
+                    'order_dated' => $request['order_dated'],
+                    'dispatch_doc_no' => $request['dispatch_doc_no'],
+                    'delivery_note_date' => $request['delivery_note_date'],
+                    'dispatched_through' => $request['dispatched_through'],
+                    'destination' => $request['destination'],
+                    'terms_of_delivery' => $request['terms_of_delivery'],
                 ]);
             }
 
@@ -1233,6 +1267,23 @@ class SalesController extends BaseController
         $sale_details['paid_amount'] = number_format($sale_data->paid_amount, 2, '.', '');
         $sale_details['due'] = number_format($sale_details['GrandTotal'] - $sale_details['paid_amount'], 2, '.', '');
         $sale_details['payment_status'] = $sale_data->payment_statut;
+        $sale_details['irn_number'] = $sale_data->irn_number;
+        $sale_details['ack_no'] = $sale_data->ack_no;
+        $sale_details['ack_date'] = $sale_data->ack_date;
+        $sale_details['invoice_number'] = $sale_data->invoice_number;
+        $sale_details['dated'] = $sale_data->dated;
+        $sale_details['delivery_note'] = $sale_data->delivery_note;
+        $sale_details['mode_terms_of_payment'] = $sale_data->mode_terms_of_payment;
+        $sale_details['reference_no'] = $sale_data->reference_no;
+        $sale_details['reference_date'] = $sale_data->reference_date;
+        $sale_details['other_references'] = $sale_data->other_references;
+        $sale_details['buyers_order_no'] = $sale_data->buyers_order_no;
+        $sale_details['order_dated'] = $sale_data->order_dated;
+        $sale_details['dispatch_doc_no'] = $sale_data->dispatch_doc_no;
+        $sale_details['delivery_note_date'] = $sale_data->delivery_note_date;
+        $sale_details['dispatched_through'] = $sale_data->dispatched_through;
+        $sale_details['destination'] = $sale_data->destination;
+        $sale_details['terms_of_delivery'] = $sale_data->terms_of_delivery;
 
         if (SaleReturn::where('sale_id', $id)->where('deleted_at', '=', null)->exists()) {
             $sellReturn = SaleReturn::where('sale_id', $id)->where('deleted_at', '=', null)->first();
@@ -1329,6 +1380,24 @@ class SalesController extends BaseController
         $item['shipping'] = number_format($sale->shipping, 2, '.', '');
         $item['taxe'] =     number_format($sale->TaxNet, 2, '.', '');
         $item['tax_rate'] = $sale->tax_rate;
+        $item['irn_number'] = $sale->irn_number;
+        $item['ack_no'] = $sale->ack_no;
+        $item['ack_date'] = $sale->ack_date;
+        $item['invoice_number'] = $sale->invoice_number;
+        $item['dated'] = $sale->dated;
+        $item['delivery_note'] = $sale->delivery_note;
+        $item['mode_terms_of_payment'] = $sale->mode_terms_of_payment;
+        $item['reference_no'] = $sale->reference_no;
+        $item['reference_date'] = $sale->reference_date;
+        $item['other_references'] = $sale->other_references;
+        $item['buyers_order_no'] = $sale->buyers_order_no;
+        $item['order_dated'] = $sale->order_dated;
+        $item['dispatch_doc_no'] = $sale->dispatch_doc_no;
+        $item['delivery_note_date'] = $sale->delivery_note_date;
+        $item['dispatched_through'] = $sale->dispatched_through;
+        $item['destination'] = $sale->destination;
+        $item['terms_of_delivery'] = $sale->terms_of_delivery;
+
         $item['client_name'] = $sale['client']->name;
         $item['warehouse_name'] = $sale['warehouse']->name;
         $item['seller_name'] = $sale['user']->username;
@@ -1649,6 +1718,23 @@ class SalesController extends BaseController
           $sale['shipping'] = $Sale_data->shipping;
           $sale['statut'] = $Sale_data->statut;
           $sale['notes'] = $Sale_data->notes;
+          $sale['irn_number'] = $Sale_data->irn_number;
+          $sale['ack_no'] = $Sale_data->ack_no;
+          $sale['ack_date'] = $Sale_data->ack_date;
+          $sale['invoice_number'] = $Sale_data->invoice_number;
+          $sale['dated'] = $Sale_data->dated;
+          $sale['delivery_note'] = $Sale_data->delivery_note;
+          $sale['mode_terms_of_payment'] = $Sale_data->mode_terms_of_payment;
+          $sale['reference_no'] = $Sale_data->reference_no;
+          $sale['reference_date'] = $Sale_data->reference_date;
+          $sale['other_references'] = $Sale_data->other_references;
+          $sale['buyers_order_no'] = $Sale_data->buyers_order_no;
+          $sale['order_dated'] = $Sale_data->order_dated;
+          $sale['dispatch_doc_no'] = $Sale_data->dispatch_doc_no;
+          $sale['delivery_note_date'] = $Sale_data->delivery_note_date;
+          $sale['dispatched_through'] = $Sale_data->dispatched_through;
+          $sale['destination'] = $Sale_data->destination;
+          $sale['terms_of_delivery'] = $Sale_data->terms_of_delivery;
   
           $detail_id = 0;
           foreach ($Sale_data['details'] as $detail) {

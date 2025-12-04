@@ -214,7 +214,7 @@
                     :rules="{ regex: /^\d*\.?\d*$/}"
                     v-slot="validationContext"
                   >
-                    <b-form-group :label="$t('OrderTax')">
+                    <b-form-group :label="$t('IGST')">
                       <b-input-group append="%">
                         <b-form-input
                           :state="getValidationState(validationContext)"
@@ -519,6 +519,164 @@
                   </b-form-group>
                 </b-col>
 
+                <!-- Additional Fields -->
+                <!-- <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="IRN number">
+                    <b-form-input
+                      v-model="sale.irn_number"
+                      placeholder="Enter IRN number"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col> -->
+
+                <!-- <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="ack no.">
+                    <b-form-input
+                      v-model="sale.ack_no"
+                      placeholder="Enter ack no."
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col> -->
+
+                <!-- <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="ack date">
+                    <b-form-input
+                      type="date"
+                      v-model="sale.ack_date"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col> -->
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Invoice number">
+                    <b-form-input
+                      v-model="sale.invoice_number"
+                      placeholder="Enter invoice number"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Dated">
+                    <b-form-input
+                      type="date"
+                      v-model="sale.dated"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Delivery Note">
+                    <textarea
+                      v-model="sale.delivery_note"
+                      rows="2"
+                      class="form-control"
+                      placeholder="Enter Delivery Note"
+                    ></textarea>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Mode/Terms of Payment">
+                    <b-form-input
+                      v-model="sale.mode_terms_of_payment"
+                      placeholder="Enter Mode/Terms of Payment"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Reference No.">
+                    <b-form-input
+                      v-model="sale.reference_no"
+                      placeholder="Enter Reference No."
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Reference Date">
+                    <b-form-input
+                      type="date"
+                      v-model="sale.reference_date"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Other References">
+                    <textarea
+                      v-model="sale.other_references"
+                      rows="2"
+                      class="form-control"
+                      placeholder="Enter Other References"
+                    ></textarea>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Buyer's Order No.">
+                    <b-form-input
+                      v-model="sale.buyers_order_no"
+                      placeholder="Enter Buyer's Order No."
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Order Dated">
+                    <b-form-input
+                      type="date"
+                      v-model="sale.order_dated"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Dispatch Doc No.">
+                    <b-form-input
+                      v-model="sale.dispatch_doc_no"
+                      placeholder="Enter Dispatch Doc No."
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Delivery Note Date">
+                    <b-form-input
+                      type="date"
+                      v-model="sale.delivery_note_date"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Dispatched through">
+                    <b-form-input
+                      v-model="sale.dispatched_through"
+                      placeholder="Enter Dispatched through"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Destination">
+                    <b-form-input
+                      v-model="sale.destination"
+                      placeholder="Enter Destination"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group label="Terms of Delivery">
+                    <b-form-input
+                      v-model="sale.terms_of_delivery"
+                      placeholder="Enter Terms of Delivery"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
                 <b-col md="12">
                   <b-form-group>
                     <b-button variant="primary" :disabled="paymentProcessing" @click="Submit_Sale"><i class="i-Yes me-2 font-weight-bold"></i> {{$t('submit')}}</b-button>
@@ -586,7 +744,7 @@
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                 v-slot="validationContext"
               >
-                <b-form-group :label="$t('OrderTax') + ' ' + '*'">
+                <b-form-group :label="$t('IGST') + ' ' + '*'">
                   <b-input-group append="%">
                     <b-form-input
                       label="Order Tax"
@@ -751,7 +909,24 @@ export default {
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
-        discount: 0
+        discount: 0,
+        irn_number: "",
+        ack_no: "",
+        ack_date: "",
+        invoice_number: "",
+        dated: "",
+        delivery_note: "",
+        mode_terms_of_payment: "",
+        reference_no: "",
+        reference_date: "",
+        other_references: "",
+        buyers_order_no: "",
+        order_dated: "",
+        dispatch_doc_no: "",
+        delivery_note_date: "",
+        dispatched_through: "",
+        destination: "",
+        terms_of_delivery: ""
       },
       timer:null,
       total: 0,
@@ -1632,6 +1807,24 @@ export default {
               discount: this.sale.discount?this.sale.discount:0,
               shipping: this.sale.shipping?this.sale.shipping:0,
               GrandTotal: this.GrandTotal,
+              // irn_number: this.sale.irn_number,
+              ack_no: this.sale.ack_no,
+              ack_date: this.sale.ack_date,
+              invoice_number: this.sale.invoice_number,
+              dated: this.sale.dated,
+              delivery_note: this.sale.delivery_note,
+              mode_terms_of_payment: this.sale.mode_terms_of_payment,
+              reference_no: this.sale.reference_no,
+              reference_date: this.sale.reference_date,
+              other_references: this.sale.other_references,
+              buyers_order_no: this.sale.buyers_order_no,
+              order_dated: this.sale.order_dated,
+              dispatch_doc_no: this.sale.dispatch_doc_no,
+              delivery_note_date: this.sale.delivery_note_date,
+              dispatched_through: this.sale.dispatched_through,
+              destination: this.sale.destination,
+              terms_of_delivery: this.sale.terms_of_delivery,
+
               details: this.details,
               payment: this.payment,
               amount: parseFloat(this.payment.amount).toFixed(2),

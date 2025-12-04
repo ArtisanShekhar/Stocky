@@ -11,7 +11,10 @@ class Sale extends Model
     protected $fillable = [
         'date', 'Ref', 'is_pos', 'client_id', 'GrandTotal', 'qte_retturn', 'TaxNet', 'tax_rate', 'notes',
         'total_retturn', 'warehouse_id', 'user_id', 'statut', 'discount', 'shipping','time','used_points','earned_points','discount_from_points',
-        'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at','shipping_status','subscription_id'
+        'paid_amount', 'payment_statut', 'created_at', 'updated_at', 'deleted_at','shipping_status','subscription_id',
+        'irn_number', 'ack_no', 'ack_date', 'invoice_number', 'dated', 'delivery_note', 'mode_terms_of_payment',
+        'reference_no', 'reference_date', 'other_references', 'buyers_order_no', 'order_dated', 'dispatch_doc_no',
+        'delivery_note_date', 'dispatched_through', 'destination', 'terms_of_delivery'
     ];
 
     protected $casts = [
