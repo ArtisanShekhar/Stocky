@@ -11,7 +11,9 @@ class Client extends Model
 
     protected $fillable = [
         'name', 'code', 'adresse', 'email', 'phone', 'country', 'city','tax_number',
-        'is_royalty_eligible','points'
+        'is_royalty_eligible','points',
+        'shipping_gstin', 'shipping_state_name', 'shipping_state_code', 'shipping_address',
+        'billing_gstin', 'billing_state_name', 'billing_state_code', 'billing_address'
     ];
 
     protected $casts = [

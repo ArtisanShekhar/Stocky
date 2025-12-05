@@ -112,6 +112,15 @@ class ClientController extends BaseController
             $item['city'] = $client->city;
             $item['adresse'] = $client->adresse;
             $item['is_royalty_eligible'] = $client->is_royalty_eligible;
+            $item['shipping_gstin'] = $client->shipping_gstin;
+            $item['shipping_state_name'] = $client->shipping_state_name;
+            $item['shipping_state_code'] = $client->shipping_state_code;
+            $item['shipping_address'] = $client->shipping_address;
+
+            $item['billing_gstin'] = $client->billing_gstin;
+            $item['billing_state_name'] = $client->billing_state_name;
+            $item['billing_state_code'] = $client->billing_state_code;
+            $item['billing_address'] = $client->billing_address;
             $item['points'] = $client->points;
             $data[] = $item;
         }
@@ -163,6 +172,14 @@ class ClientController extends BaseController
             'city' => $request['city'],
             'tax_number' => $request['tax_number'],
             'is_royalty_eligible' => $is_royalty_eligible,
+            'shipping_gstin' => $request['shipping_gstin'],
+            'shipping_state_name' => $request['shipping_state_name'],
+            'shipping_state_code' => $request['shipping_state_code'],
+            'shipping_address' => $request['shipping_address'],
+            'billing_gstin' => $request['billing_gstin'],
+            'billing_state_name' => $request['billing_state_name'],
+            'billing_state_code' => $request['billing_state_code'],
+            'billing_address' => $request['billing_address'],
         ]);
 
         return response()->json($client);
@@ -221,6 +238,14 @@ class ClientController extends BaseController
                 'city'                => $request->input('city'),
                 'tax_number'          => $request->input('tax_number'),
                 'is_royalty_eligible' => $isRoyaltyEligible,
+                'shipping_gstin' => $request->input('shipping_gstin'),
+                'shipping_state_name' => $request->input('shipping_state_name'),
+                'shipping_state_code' => $request->input('shipping_state_code'),
+                'shipping_address' => $request->input('shipping_address'),
+                'billing_gstin' => $request->input('billing_gstin'),
+                'billing_state_name' => $request->input('billing_state_name'),
+                'billing_state_code' => $request->input('billing_state_code'),
+                'billing_address' => $request->input('billing_address'),
             ]);
 
             // 2) Upsert EcommerceClient linked by client_id
@@ -395,6 +420,14 @@ class ClientController extends BaseController
             $city       = isset($row['city'])       ? trim((string)$row['city']) : '';
             $adresse    = isset($row['adresse'])    ? trim((string)$row['adresse']) : '';
             $tax_number = isset($row['tax_number']) ? trim((string)$row['tax_number']) : '';
+            $shipping_gstin = isset($row['shipping_gstin']) ? trim((string)$row['shipping_gstin']) : '';
+            $shipping_state_name = isset($row['shipping_state_name']) ? trim((string)$row['shipping_state_name']) : '';
+            $shipping_state_code = isset($row['shipping_state_code']) ? trim((string)$row['shipping_state_code']) : '';
+            $shipping_address = isset($row['shipping_address']) ? trim((string)$row['shipping_address']) : '';
+            $billing_gstin = isset($row['billing_gstin']) ? trim((string)$row['billing_gstin']) : '';
+            $billing_state_name = isset($row['billing_state_name']) ? trim((string)$row['billing_state_name']) : '';
+            $billing_state_code = isset($row['billing_state_code']) ? trim((string)$row['billing_state_code']) : '';
+            $billing_address = isset($row['billing_address']) ? trim((string)$row['billing_address']) : '';
 
             if ($name === '') $errors[] = "Row {$line}: name is required.";
 
@@ -428,6 +461,14 @@ class ClientController extends BaseController
                 'city'       => $city ?: null,
                 'adresse'    => $adresse ?: null,
                 'tax_number' => $tax_number ?: null,
+                'shipping_gstin' => $shipping_gstin ?: null,
+                'shipping_state_name' => $shipping_state_name ?: null,
+                'shipping_state_code' => $shipping_state_code ?: null,
+                'shipping_address' => $shipping_address ?: null,
+                'billing_gstin' => $billing_gstin ?: null,
+                'billing_state_name' => $billing_state_name ?: null,
+                'billing_state_code' => $billing_state_code ?: null,
+                'billing_address' => $billing_address ?: null,
             ];
         }
 
@@ -459,6 +500,14 @@ class ClientController extends BaseController
                 'city'       => $r['city'],
                 'adresse'    => $r['adresse'],
                 'tax_number' => $r['tax_number'],
+                'shipping_gstin' => $r['shipping_gstin'],
+                'shipping_state_name' => $r['shipping_state_name'],
+                'shipping_state_code' => $r['shipping_state_code'],
+                'shipping_address' => $r['shipping_address'],
+                'billing_gstin' => $r['billing_gstin'],
+                'billing_state_name' => $r['billing_state_name'],
+                'billing_state_code' => $r['billing_state_code'],
+                'billing_address' => $r['billing_address'],
                 'created_at' => $now,
                 'updated_at' => $now,
             ];

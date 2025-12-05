@@ -874,41 +874,64 @@
           </div>
 
           <!-- ===== HEADER (TWO COLUMN: SELLER LEFT + CUSTOM RIGHT ) ===== -->
-          <table width="100%" border="1" cellspacing="0" cellpadding="3"
-            style="border-collapse: collapse; font-size:11px; margin-bottom:5px;">
-            <tr>
-              <!-- LEFT: SELLER DETAILS -->
-              <td width="50%" style="vertical-align: top;">
-                <b>{{$t('Seller')}}</b> : {{invoice_pos.sale.seller_name}} <br>
-                <span v-show="pos_settings.show_address">{{$t('Adress')}} : {{invoice_pos.setting.CompanyAdress}}</span><br>
-                <span v-show="pos_settings.show_email">{{$t('Email')}} : {{invoice_pos.setting.email}}</span><br>
-                <span v-show="pos_settings.show_phone">{{$t('Phone')}} : {{invoice_pos.setting.CompanyPhone}}</span><br>
-                <span v-show="pos_settings.show_customer">{{$t('Customer')}} : <b>{{invoice_pos.sale.client_name}}</b></span><br>
-                <span v-show="pos_settings.show_Warehouse">{{$t('warehouse')}} : {{invoice_pos.sale.warehouse_name}}</span><br>
-              </td>
+            <!-- ===== HEADER (LEFT BLOCK + RIGHT BLOCK) ===== -->
+            <table width="100%" border="1" cellspacing="0" cellpadding="3"
+              style="border-collapse: collapse; font-size:11px; margin-bottom:5px;">
 
-              <!-- RIGHT: CUSTOM FIELDS -->
-              <td width="50%" style="vertical-align: top;">
-                <span v-if="invoice_pos.sale.Ref">IRN No : {{invoice_pos.sale.Ref}}</span><br>
-                <span v-if="invoice_pos.sale.ack_no">Ack No : {{invoice_pos.sale.ack_no}}</span><br>
-                <span v-if="invoice_pos.sale.ack_date">Ack Date : {{invoice_pos.sale.ack_date}}</span><br>
-                <span v-if="invoice_pos.sale.invoice_number">Invoice No : {{invoice_pos.sale.invoice_number}}</span><br>
-                <span v-if="invoice_pos.sale.dated">Dated : {{invoice_pos.sale.dated}}</span><br>
-                <span v-if="invoice_pos.sale.delivery_note">Delivery Note : {{invoice_pos.sale.delivery_note}}</span><br>
-                <span v-if="invoice_pos.sale.mode_terms_payment">Mode / Terms of Payment : {{invoice_pos.sale.mode_terms_payment}}</span><br>
-                <span v-if="invoice_pos.sale.reference_no">Reference No : {{invoice_pos.sale.reference_no}}</span><br>
-                <span v-if="invoice_pos.sale.reference_date">Reference Date : {{invoice_pos.sale.reference_date}}</span><br>
-                <span v-if="invoice_pos.sale.other_references">Other References : {{invoice_pos.sale.other_references}}</span><br>
-                <span v-if="invoice_pos.sale.buyers_order_no">Buyer Order No : {{invoice_pos.sale.buyers_order_no}}</span><br>
-                <span v-if="invoice_pos.sale.order_dated">Order Dated : {{invoice_pos.sale.order_dated}}</span><br>
-                <span v-if="invoice_pos.sale.dispatch_doc_no">Dispatch Doc. No : {{invoice_pos.sale.dispatch_doc_no}}</span><br>
-                <span v-if="invoice_pos.sale.delivery_note_date">Delivery Note Date : {{invoice_pos.sale.delivery_note_date}}</span><br>
-                <span v-if="invoice_pos.sale.dispatched_through">Dispatched Through : {{invoice_pos.sale.dispatched_through}}</span><br>
-                <span v-if="invoice_pos.sale.destination">Destination : {{invoice_pos.sale.destination}}</span><br>
-                <span v-if="invoice_pos.sale.terms_of_delivery">Terms of Delivery : {{invoice_pos.sale.terms_of_delivery}}</span><br>
-              </td>
-            </tr>
-          </table>
+              <tr>
+                <!-- LEFT BLOCK (SELLER + SHIPPING + BILLING) -->
+                <td width="50%" style="vertical-align: top;">
+
+                  <!-- SELLER INFO -->
+                  <b>{{ $t('Seller') }}</b> : {{ invoice_pos.sale.seller_name }} <br>
+                  <span v-show="pos_settings.show_address">{{ $t('Adress') }} : {{ invoice_pos.setting.CompanyAdress }}</span><br>
+                  <span v-show="pos_settings.show_email">{{ $t('Email') }} : {{ invoice_pos.setting.email }}</span><br>
+                  <span v-show="pos_settings.show_phone">{{ $t('Phone') }} : {{ invoice_pos.setting.CompanyPhone }}</span><br>
+                  <span v-show="pos_settings.show_Warehouse">{{ $t('warehouse') }} : {{ invoice_pos.sale.warehouse_name }}</span><br>
+                  <span v-show="pos_settings.show_customer">{{ $t('Customer') }} : <b>{{ invoice_pos.sale.client_name }}</b></span><br>
+
+                  <hr style="margin:3px 0;">
+
+                  <!-- SHIPPING DETAILS -->
+                  <b>Shipping Address</b><br>
+                  <span v-if="invoice_pos.sale.shipping_address">Address : {{ invoice_pos.sale.shipping_address }}</span><br>
+                  <span v-if="invoice_pos.sale.shipping_state_name">State : {{ invoice_pos.sale.shipping_state_name }}</span><br>
+                  <span v-if="invoice_pos.sale.shipping_state_code">Code : {{ invoice_pos.sale.shipping_state_code }}</span><br>
+                  <span v-if="invoice_pos.sale.shipping_gstin">GSTIN : {{ invoice_pos.sale.shipping_gstin }}</span><br>
+                  <hr style="margin:3px 0;">
+
+                  <!-- BILLING DETAILS -->
+                  <b>Billing Address</b><br>
+                  <span v-if="invoice_pos.sale.billing_address">Address : {{ invoice_pos.sale.billing_address }}</span><br>
+                  <span v-if="invoice_pos.sale.billing_state_name">State : {{ invoice_pos.sale.billing_state_name }}</span><br>
+                  <span v-if="invoice_pos.sale.billing_state_code">Code : {{ invoice_pos.sale.billing_state_code }}</span><br>
+                  <span v-if="invoice_pos.sale.billing_gstin">GSTIN : {{ invoice_pos.sale.billing_gstin }}</span><br>
+
+                </td>
+                <!-- RIGHT BLOCK (CUSTOM FIELDS) -->
+                <td width="50%" style="vertical-align: top;">
+                  <span v-if="invoice_pos.sale.Ref">IRN No : {{ invoice_pos.sale.Ref }}</span><br>
+                  <span v-if="invoice_pos.sale.ack_no">Ack No : {{ invoice_pos.sale.ack_no }}</span><br>
+                  <span v-if="invoice_pos.sale.ack_date">Ack Date : {{ invoice_pos.sale.ack_date }}</span><br>
+                  <span v-if="invoice_pos.sale.invoice_number">Invoice No : {{ invoice_pos.sale.invoice_number }}</span><br>
+                  <span v-if="invoice_pos.sale.dated">Dated : {{ invoice_pos.sale.dated }}</span><br>
+                  <span v-if="invoice_pos.sale.delivery_note">Delivery Note : {{ invoice_pos.sale.delivery_note }}</span><br>
+                  <span v-if="invoice_pos.sale.mode_terms_payment">Mode / Terms of Payment : {{ invoice_pos.sale.mode_terms_payment }}</span><br>
+                  <span v-if="invoice_pos.sale.reference_no">Reference No : {{ invoice_pos.sale.reference_no }}</span><br>
+                  <span v-if="invoice_pos.sale.reference_date">Reference Date : {{ invoice_pos.sale.reference_date }}</span><br>
+                  <span v-if="invoice_pos.sale.other_references">Other References : {{ invoice_pos.sale.other_references }}</span><br>
+                  <span v-if="invoice_pos.sale.buyers_order_no">Buyer Order No : {{ invoice_pos.sale.buyers_order_no }}</span><br>
+                  <span v-if="invoice_pos.sale.order_dated">Order Dated : {{ invoice_pos.sale.order_dated }}</span><br>
+                  <span v-if="invoice_pos.sale.dispatch_doc_no">Dispatch Doc. No : {{ invoice_pos.sale.dispatch_doc_no }}</span><br>
+                  <span v-if="invoice_pos.sale.delivery_note_date">Delivery Note Date : {{ invoice_pos.sale.delivery_note_date }}</span><br>
+                  <span v-if="invoice_pos.sale.dispatched_through">Dispatched Through : {{ invoice_pos.sale.dispatched_through }}</span><br>
+                  <span v-if="invoice_pos.sale.destination">Destination : {{ invoice_pos.sale.destination }}</span><br>
+                  <span v-if="invoice_pos.sale.terms_of_delivery">Terms of Delivery : {{ invoice_pos.sale.terms_of_delivery }}</span><br>
+                </td>
+              </tr>
+
+            </table>
+
 
         </div>
 

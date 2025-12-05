@@ -791,6 +791,9 @@ class SalesController extends BaseController
 
                 // Update Data with New request
                 $total_points_earned = 0;
+                $new_earned = 0;
+                $new_used = $request['used_points'] ?? 0;
+
                 foreach ($new_sale_details as $prd => $prod_detail) {
 
                     $product = Product::find($prod_detail['product_id']);
@@ -881,7 +884,6 @@ class SalesController extends BaseController
                     }
 
                     // Step 2: Apply new point logic
-                    $new_used = $request['used_points'] ?? 0;
                     $new_earned = $total_points_earned;
 
                     if ($new_used > 0 && $client->points >= $new_used) {
@@ -1398,7 +1400,15 @@ class SalesController extends BaseController
         $item['destination'] = $sale->destination;
         $item['terms_of_delivery'] = $sale->terms_of_delivery;
 
-        $item['client_name'] = $sale['client']->name;
+        $item['client_name'] = $sale['client']->name; 
+        $item['shipping_address']= $sale['client']->shipping_address;
+        $item['shipping_state_name'] = $sale['client']->shipping_state_name;
+        $item['shipping_state_code'] = $sale['client']->shipping_state_code;
+        $item['shipping_gstin']= $sale['client']->shipping_gstin;
+        $item['billing_address']= $sale['client']->billing_address;
+        $item['billing_state_name'] = $sale['client']->billing_state_name;
+        $item['billing_state_code'] = $sale['client']->billing_state_code;
+        $item['billing_gstin']= $sale['client']->billing_gstin;
         $item['warehouse_name'] = $sale['warehouse']->name;
         $item['seller_name'] = $sale['user']->username;
         $item['GrandTotal'] = number_format($sale->GrandTotal, 2, '.', '');

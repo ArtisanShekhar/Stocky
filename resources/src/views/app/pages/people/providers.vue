@@ -270,7 +270,7 @@
             </b-col>
 
             <!-- Provider Adress -->
-            <b-col md="12" sm="12">
+            <!-- <b-col md="12" sm="12">
                 <b-form-group :label="$t('Adress')">
                   <textarea
                     label="Adress"
@@ -280,6 +280,104 @@
                     :placeholder="$t('Adress')"
                  ></textarea>
                 </b-form-group>
+            </b-col> -->
+
+            <!-- Shipping Address Section -->
+            <b-col md="12" class="mt-4">
+              <h5>{{$t('Shipping Address')}}</h5>
+            </b-col>
+
+            <!-- Shipping GSTIN -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('GSTIN')">
+                <b-form-input
+                  label="Shipping GSTIN"
+                  v-model="provider.shipping_gstin"
+                  :placeholder="$t('GSTIN')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Shipping State Name -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Name')">
+                <b-form-input
+                  label="Shipping State Name"
+                  v-model="provider.shipping_state_name"
+                  :placeholder="$t('State Name')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Shipping State Code -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Code')">
+                <b-form-input
+                  label="Shipping State Code"
+                  v-model="provider.shipping_state_code"
+                  :placeholder="$t('State Code')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Shipping Address -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Address')">
+                <b-form-input
+                  label="Shipping Address"
+                  v-model="provider.shipping_address"
+                  :placeholder="$t('Address')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Billing Address Section -->
+            <b-col md="12" class="mt-4">
+              <h5>{{$t('Billing Address')}}</h5>
+            </b-col>
+
+            <!-- Billing GSTIN -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('GSTIN')">
+                <b-form-input
+                  label="Billing GSTIN"
+                  v-model="provider.billing_gstin"
+                  :placeholder="$t('GSTIN')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Billing State Name -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Name')">
+                <b-form-input
+                  label="Billing State Name"
+                  v-model="provider.billing_state_name"
+                  :placeholder="$t('State Name')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Billing State Code -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Code')">
+                <b-form-input
+                  label="Billing State Code"
+                  v-model="provider.billing_state_code"
+                  :placeholder="$t('State Code')"
+                ></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Billing Address -->
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Address')">
+                <b-form-input
+                  label="Billing Address"
+                  v-model="provider.billing_address"
+                  :placeholder="$t('Address')"
+                ></b-form-input>
+              </b-form-group>
             </b-col>
 
             <b-col md="12" class="mt-3">
@@ -775,7 +873,15 @@ export default {
         tax_number: "",
         country: "",
         city: "",
-        adresse: ""
+        adresse: "",
+        shipping_gstin: "",
+        shipping_state_name: "",
+        shipping_state_code: "",
+        shipping_address: "",
+        billing_gstin: "",
+        billing_state_name: "",
+        billing_state_code: "",
+        billing_address: ""
       },
       payment: {
         provider_id: "",
@@ -1162,7 +1268,15 @@ export default {
           tax_number: this.provider.tax_number,
           country: this.provider.country,
           city: this.provider.city,
-          adresse: this.provider.adresse
+          adresse: this.provider.adresse,
+          shipping_gstin: this.provider.shipping_gstin,
+          shipping_state_name: this.provider.shipping_state_name,
+          shipping_state_code: this.provider.shipping_state_code,
+          shipping_address: this.provider.shipping_address,
+          billing_gstin: this.provider.billing_gstin,
+          billing_state_name: this.provider.billing_state_name,
+          billing_state_code: this.provider.billing_state_code,
+          billing_address: this.provider.billing_address
         })
         .then(response => {
           Fire.$emit("Event_Provider");
@@ -1191,7 +1305,15 @@ export default {
           phone: this.provider.phone,
           country: this.provider.country,
           city: this.provider.city,
-          adresse: this.provider.adresse
+          adresse: this.provider.adresse,
+          shipping_gstin: this.provider.shipping_gstin,
+          shipping_state_name: this.provider.shipping_state_name,
+          shipping_state_code: this.provider.shipping_state_code,
+          shipping_address: this.provider.shipping_address,
+          billing_gstin: this.provider.billing_gstin,
+          billing_state_name: this.provider.billing_state_name,
+          billing_state_code: this.provider.billing_state_code,
+          billing_address: this.provider.billing_address
         })
         .then(response => {
           Fire.$emit("Event_Provider");
@@ -1228,7 +1350,15 @@ export default {
         country: "",
         tax_number: "",
         city: "",
-        adresse: ""
+        adresse: "",
+        shipping_gstin: "",
+        shipping_state_name: "",
+        shipping_state_code: "",
+        shipping_address: "",
+        billing_gstin: "",
+        billing_state_name: "",
+        billing_state_code: "",
+        billing_address: ""
       };
     },
 

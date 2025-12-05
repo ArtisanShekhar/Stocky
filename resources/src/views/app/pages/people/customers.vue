@@ -609,7 +609,7 @@
             </b-col>
 
             <!-- Customer Adress -->
-            <b-col md="12" sm="12">
+            <!-- <b-col md="12" sm="12">
                 <b-form-group :label="$t('Adress')">
                   <textarea
                     label="Adress"
@@ -619,6 +619,56 @@
                     :placeholder="$t('Adress')"
                  ></textarea>
                 </b-form-group>
+            </b-col> -->
+
+            <!-- Shipping Address -->
+            <b-col md="12" sm="12">
+              <h5>Shipping Address</h5>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('GSTIN')">
+                <b-form-input v-model="client.shipping_gstin" :placeholder="$t('GSTIN')"></b-form-input>
+              </b-form-group>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Name')">
+                <b-form-input v-model="client.shipping_state_name" :placeholder="$t('State Name')"></b-form-input>
+              </b-form-group>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Code')">
+                <b-form-input v-model="client.shipping_state_code" :placeholder="$t('State Code')"></b-form-input>
+              </b-form-group>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Address')">
+                <b-form-input v-model="client.shipping_address" :placeholder="$t('Address')"></b-form-input>
+              </b-form-group>
+            </b-col>
+
+            <!-- Billing Address -->
+            <b-col md="12" sm="12">
+              <h5>Billing Address</h5>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('GSTIN')">
+                <b-form-input v-model="client.billing_gstin" :placeholder="$t('GSTIN')"></b-form-input>
+              </b-form-group>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Name')">
+                <b-form-input v-model="client.billing_state_name" :placeholder="$t('State Name')"></b-form-input>
+              </b-form-group>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('State Code')">
+                <b-form-input v-model="client.billing_state_code" :placeholder="$t('State Code')"></b-form-input>
+              </b-form-group>
+            </b-col>
+            <b-col md="6" sm="12">
+              <b-form-group :label="$t('Address')">
+                <b-form-input v-model="client.billing_address" :placeholder="$t('Address')"></b-form-input>
+              </b-form-group>
             </b-col>
 
              <b-col md="6" sm="12" class="mt-4 mb-4">
@@ -981,6 +1031,14 @@ export default {
         adresse: "",
         tax_number: "",
         is_royalty_eligible: "",
+        shipping_gstin: "",
+        shipping_state_name: "",
+        shipping_state_code: "",
+        shipping_address: "",
+        billing_gstin: "",
+        billing_state_name: "",
+        billing_state_code: "",
+        billing_address: "",
 
       },
       adjustPointsForm: {
@@ -1549,7 +1607,15 @@ export default {
           country: this.client.country,
           city: this.client.city,
           adresse: this.client.adresse,
-          is_royalty_eligible: this.client.is_royalty_eligible
+          is_royalty_eligible: this.client.is_royalty_eligible,
+          shipping_gstin: this.client.shipping_gstin,
+          shipping_state_name: this.client.shipping_state_name,
+          shipping_state_code: this.client.shipping_state_code,
+          shipping_address: this.client.shipping_address,
+          billing_gstin: this.client.billing_gstin,
+          billing_state_name: this.client.billing_state_name,
+          billing_state_code: this.client.billing_state_code,
+          billing_address: this.client.billing_address
         })
         .then(response => {
           Fire.$emit("Event_Customer");
@@ -1562,7 +1628,7 @@ export default {
           this.SubmitProcessing = false;
         })
         .catch(error => {
-          
+
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
           this.SubmitProcessing = false;
         });
@@ -1580,7 +1646,15 @@ export default {
           country: this.client.country,
           city: this.client.city,
           adresse: this.client.adresse,
-          is_royalty_eligible: this.client.is_royalty_eligible
+          is_royalty_eligible: this.client.is_royalty_eligible,
+          shipping_gstin: this.client.shipping_gstin,
+          shipping_state_name: this.client.shipping_state_name,
+          shipping_state_code: this.client.shipping_state_code,
+          shipping_address: this.client.shipping_address,
+          billing_gstin: this.client.billing_gstin,
+          billing_state_name: this.client.billing_state_name,
+          billing_state_code: this.client.billing_state_code,
+          billing_address: this.client.billing_address
         })
         .then(response => {
           Fire.$emit("Event_Customer");
@@ -1592,7 +1666,7 @@ export default {
           this.SubmitProcessing = false;
         })
         .catch(error => {
-         
+
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
           this.SubmitProcessing = false;
         });
@@ -1610,6 +1684,14 @@ export default {
         city: "",
         adresse: "",
         is_royalty_eligible: "",
+        shipping_gstin: "",
+        shipping_state_name: "",
+        shipping_state_code: "",
+        shipping_address: "",
+        billing_gstin: "",
+        billing_state_name: "",
+        billing_state_code: "",
+        billing_address: "",
       };
     },
 

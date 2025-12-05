@@ -101,6 +101,15 @@ class ProvidersController extends BaseController
             $item['country'] = $provider->country;
             $item['city'] = $provider->city;
             $item['adresse'] = $provider->adresse;
+            $item['shipping_gstin'] = $provider->shipping_gstin;
+            $item['shipping_state_name'] = $provider->shipping_state_name;
+            $item['shipping_state_code'] = $provider->shipping_state_code;
+            $item['shipping_address'] = $provider->shipping_address;
+
+            $item['billing_gstin'] = $provider->billing_gstin;
+            $item['billing_state_name'] = $provider->billing_state_name;
+            $item['billing_state_code'] = $provider->billing_state_code;
+            $item['billing_address'] = $provider->billing_address;
             $data[] = $item;
         }
 
@@ -135,6 +144,14 @@ class ProvidersController extends BaseController
             'country' => $request['country'],
             'city' => $request['city'],
             'tax_number' => $request['tax_number'],
+            'shipping_gstin' => $request['shipping_gstin'],
+            'shipping_state_name' => $request['shipping_state_name'],
+            'shipping_state_code' => $request['shipping_state_code'],
+            'shipping_address' => $request['shipping_address'],
+            'billing_gstin' => $request['billing_gstin'],
+            'billing_state_name' => $request['billing_state_name'],
+            'billing_state_code' => $request['billing_state_code'],
+            'billing_address' => $request['billing_address'],
         ]);
         return response()->json(['success' => true]);
 
@@ -165,6 +182,14 @@ class ProvidersController extends BaseController
             'country' => $request['country'],
             'city' => $request['city'],
             'tax_number' => $request['tax_number'],
+            'shipping_gstin' => $request['shipping_gstin'],
+            'shipping_state_name' => $request['shipping_state_name'],
+            'shipping_state_code' => $request['shipping_state_code'],
+            'shipping_address' => $request['shipping_address'],
+            'billing_gstin' => $request['billing_gstin'],
+            'billing_state_name' => $request['billing_state_name'],
+            'billing_state_code' => $request['billing_state_code'],
+            'billing_address' => $request['billing_address'],
         ]);
         return response()->json(['success' => true]);
 
@@ -275,6 +300,14 @@ class ProvidersController extends BaseController
             $city       = isset($row['city'])       ? trim((string)$row['city']) : '';
             $adresse    = isset($row['adresse'])    ? trim((string)$row['adresse']) : '';
             $tax_number = isset($row['tax_number']) ? trim((string)$row['tax_number']) : '';
+            $shipping_gstin = isset($row['shipping_gstin']) ? trim((string)$row['shipping_gstin']) : '';
+            $shipping_state_name = isset($row['shipping_state_name']) ? trim((string)$row['shipping_state_name']) : '';
+            $shipping_state_code = isset($row['shipping_state_code']) ? trim((string)$row['shipping_state_code']) : '';
+            $shipping_address = isset($row['shipping_address']) ? trim((string)$row['shipping_address']) : '';
+            $billing_gstin = isset($row['billing_gstin']) ? trim((string)$row['billing_gstin']) : '';
+            $billing_state_name = isset($row['billing_state_name']) ? trim((string)$row['billing_state_name']) : '';
+            $billing_state_code = isset($row['billing_state_code']) ? trim((string)$row['billing_state_code']) : '';
+            $billing_address = isset($row['billing_address']) ? trim((string)$row['billing_address']) : '';
 
             if ($name === '') {
                 $errors[] = "Row {$line}: name is required.";
@@ -312,6 +345,14 @@ class ProvidersController extends BaseController
                 'city'       => $city ?: null,
                 'adresse'    => $adresse ?: null,
                 'tax_number' => $tax_number ?: null,
+                'shipping_gstin' => $shipping_gstin ?: null,
+                'shipping_state_name' => $shipping_state_name ?: null,
+                'shipping_state_code' => $shipping_state_code ?: null,
+                'shipping_address' => $shipping_address ?: null,
+                'billing_gstin' => $billing_gstin ?: null,
+                'billing_state_name' => $billing_state_name ?: null,
+                'billing_state_code' => $billing_state_code ?: null,
+                'billing_address' => $billing_address ?: null,
             ];
         }
 
