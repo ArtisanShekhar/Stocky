@@ -11,7 +11,9 @@ class Purchase extends Model
     protected $fillable = [
         'date', 'Ref', 'provider_id', 'warehouse_id', 'GrandTotal','time',
         'discount', 'shipping', 'statut', 'notes', 'TaxNet', 'tax_rate', 'paid_amount',
-        'payment_statut', 'created_at', 'updated_at', 'deleted_at',
+        'payment_statut', 'created_at', 'updated_at', 'deleted_at', 'station',
+        'place_of_supply', 'e_way_bill_no', 'reverse_charge', 'order_no', 'gr_rr_no',
+        'order_date', 'transport', 'user_id','vehicle_no',
     ];
 
     protected $casts = [
@@ -24,6 +26,7 @@ class Purchase extends Model
         'TaxNet' => 'double',
         'tax_rate' => 'double',
         'paid_amount' => 'double',
+        'reverse_charge' => 'boolean',
     ];
 
     public function details()

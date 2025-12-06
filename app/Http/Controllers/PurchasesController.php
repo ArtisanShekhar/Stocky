@@ -414,6 +414,7 @@ class PurchasesController extends BaseController
 
     public function store(Request $request)
     {
+        // echo '<pre>'; print_r($request->all()); die;
         $this->authorizeForUser(
             $request->user("api"),
             "create",
@@ -455,8 +456,25 @@ class PurchasesController extends BaseController
 
             $order->notes = $request->notes;
 
-            $order->user_id = Auth::user()->id;
+            $order->station = $request->station;
 
+            $order->place_of_supply = $request->place_of_supply;
+
+            $order->e_way_bill_no = $request->e_way_bill_no;
+
+            $order->reverse_charge = $request->reverse_charge;
+
+            $order->vehicle_no = $request->vehicle_no;
+
+            $order->order_no = $request->order_no;
+
+            $order->gr_rr_no = $request->gr_rr_no;
+
+            $order->order_date = $request->order_date;
+
+            $order->transport = $request->transport;
+
+            $order->user_id = Auth::user()->id;
             $order->save();
 
             $data = $request["details"];
@@ -873,6 +891,24 @@ class PurchasesController extends BaseController
                     "GrandTotal" => $request["GrandTotal"],
 
                     "payment_statut" => $payment_statut,
+
+                    "station" => $request["station"],
+
+                    "place_of_supply" => $request["place_of_supply"],
+
+                    "e_way_bill_no" => $request["e_way_bill_no"],
+
+                    "reverse_charge" => $request["reverse_charge"],
+                    
+                    "vehicle_no" => $request["vehicle_no"],
+
+                    "order_no" => $request["order_no"],
+
+                    "gr_rr_no" => $request["gr_rr_no"],
+
+                    "order_date" => $request["order_date"],
+
+                    "transport" => $request["transport"],
                 ]);
             }
         }, 10);
@@ -1551,7 +1587,16 @@ class PurchasesController extends BaseController
 
         $purchase["supplier_email"] = $Purchase_data["provider"]->email;
 
-        $purchase["supplier_tax"] = $Purchase_data["provider"]->tax_number;
+        $purchase["supplier_tax"] = $Purchase_data["provider"]->tax_number; 
+        $purchase["shipping_gstin"]        = $Purchase_data["provider"]->shipping_gstin;
+        $purchase["shipping_state_name"]   = $Purchase_data["provider"]->shipping_state_name;
+        $purchase["shipping_state_code"]   = $Purchase_data["provider"]->shipping_state_code;
+        $purchase["shipping_address"]      = $Purchase_data["provider"]->shipping_address;
+
+        $purchase["billing_gstin"]         = $Purchase_data["provider"]->billing_gstin;
+        $purchase["billing_state_name"]    = $Purchase_data["provider"]->billing_state_name;
+        $purchase["billing_state_code"]    = $Purchase_data["provider"]->billing_state_code;
+        $purchase["billing_address"]       = $Purchase_data["provider"]->billing_address;
 
         $purchase["TaxNet"] = number_format($Purchase_data->TaxNet, 2, ".", "");
 
@@ -1572,6 +1617,15 @@ class PurchasesController extends BaseController
         $purchase["statut"] = $Purchase_data->statut;
 
         $purchase["Ref"] = $Purchase_data->Ref;
+        $purchase["station"]          = $Purchase_data->station;
+        $purchase["place_of_supply"]  = $Purchase_data->place_of_supply;
+        $purchase["e_way_bill_no"]    = $Purchase_data->e_way_bill_no;
+        $purchase["reverse_charge"]   = $Purchase_data->reverse_charge;
+        $purchase["vehicle_no"]   = $Purchase_data->vehicle_no;
+        $purchase["order_no"]         = $Purchase_data->order_no;
+        $purchase["gr_rr_no"]         = $Purchase_data->gr_rr_no;
+        $purchase["order_date"]       = $Purchase_data->order_date;
+        $purchase["transport"]        = $Purchase_data->transport;
 
         $purchase["date"] = $Purchase_data->date . " " . $Purchase_data->time;
 
@@ -1693,6 +1747,7 @@ class PurchasesController extends BaseController
             $data["is_imei"] = $detail["product"]["is_imei"];
 
             $data["imei_number"] = $detail->imei_number;
+            $data["hsn_number"] = $detail["product"]["hsn_number"];
 
             $details[] = $data;
         }
@@ -1700,7 +1755,6 @@ class PurchasesController extends BaseController
         $settings = Setting::where("deleted_at", "=", null)->first();
 
         $symbol = $helpers->Get_Currency_Code();
-
         $Html = view("pdf.purchase_pdf", [
             "symbol" => $symbol,
 
@@ -1864,6 +1918,15 @@ class PurchasesController extends BaseController
             $purchase["statut"] = $Purchase_data->statut;
 
             $purchase["notes"] = $Purchase_data->notes;
+            $purchase["station"]          = $Purchase_data->station;
+            $purchase["place_of_supply"]  = $Purchase_data->place_of_supply;
+            $purchase["e_way_bill_no"]    = $Purchase_data->e_way_bill_no;
+            $purchase["reverse_charge"]   = (bool) $Purchase_data->reverse_charge;
+            $purchase["vehicle_no"]        = $Purchase_data->vehicle_no;
+            $purchase["order_no"]         = $Purchase_data->order_no;
+            $purchase["gr_rr_no"]         = $Purchase_data->gr_rr_no;
+            $purchase["order_date"]       = $Purchase_data->order_date;
+            $purchase["transport"]        = $Purchase_data->transport;
 
             $detail_id = 0;
 
@@ -2849,6 +2912,23 @@ class PurchasesController extends BaseController
             $order->payment_statut = "unpaid";
 
             $order->notes = $request->notes;
+
+            $order->station = $request->station;
+
+            $order->place_of_supply = $request->place_of_supply;
+
+            $order->e_way_bill_no = $request->e_way_bill_no;
+
+            $order->reverse_charge = $request->reverse_charge;
+            $order->vehicle_no = $request->vehicle_no;
+
+            $order->order_no = $request->order_no;
+
+            $order->gr_rr_no = $request->gr_rr_no;
+
+            $order->order_date = $request->order_date;
+
+            $order->transport = $request->transport;
 
             $order->user_id = Auth::user()->id;
 

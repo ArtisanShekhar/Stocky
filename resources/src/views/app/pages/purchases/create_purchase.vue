@@ -76,6 +76,8 @@
                   </validation-provider>
                 </b-col>
 
+ 
+
                 <!-- Product -->
                 <b-col md="12" class="mb-5">
                   <h6>{{$t('ProductName')}}</h6>
@@ -300,6 +302,96 @@
                     </b-form-group>
                   </validation-provider>
                 </b-col>
+                               <!-- Station -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('Station')">
+                    <b-form-input
+                      v-model="purchase.station"
+                      :placeholder="$t('Enter Station')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <!-- Place of Supply -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('Place of Supply')">
+                    <b-form-input
+                      v-model="purchase.place_of_supply"
+                      :placeholder="$t('Enter Place of Supply')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <!-- E-Way Bill No -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('E-Way Bill No')">
+                    <b-form-input
+                      v-model="purchase.e_way_bill_no"
+                      :placeholder="$t('Enter E-Way Bill No')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <!-- Reverse Charge -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('Reverse Charge')">
+                    <b-form-checkbox
+                      v-model="purchase.reverse_charge"
+                      :value="true"
+                      :unchecked-value="false"
+                    >
+                      {{ $t('Reverse Charge') }}
+                    </b-form-checkbox>
+                  </b-form-group>
+                </b-col>
+
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('Vehicle No')">
+                    <b-form-input
+                      v-model="purchase.vehicle_no"
+                      :placeholder="$t('Enter Vehicle No')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+                <!-- Order No -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('Order No')">
+                    <b-form-input
+                      v-model="purchase.order_no"
+                      :placeholder="$t('Enter Order No')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <!-- GR/RR No -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('GR/RR No')">
+                    <b-form-input
+                      v-model="purchase.gr_rr_no"
+                      :placeholder="$t('Enter GR/RR No')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <!-- Order Date -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('Order Date')">
+                    <b-form-input
+                      type="date"
+                      v-model="purchase.order_date"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
+
+                <!-- Transport -->
+                <b-col lg="4" md="4" sm="12" class="mb-3">
+                  <b-form-group :label="$t('Transport')">
+                    <b-form-input
+                      v-model="purchase.transport"
+                      :placeholder="$t('Enter Transport')"
+                    ></b-form-input>
+                  </b-form-group>
+                </b-col>
 
 
                 <b-col md="12">
@@ -520,7 +612,16 @@ export default {
         tax_rate: 0,
         TaxNet: 0,
         shipping: 0,
-        discount: 0
+        discount: 0,
+        station: "",
+        place_of_supply: "",
+        e_way_bill_no: "",
+        reverse_charge: false,
+        order_no: "",
+        vehicle_no: "",
+        gr_rr_no: "",
+        order_date: "",
+        transport: ""
       },
       total: 0,
       GrandTotal: 0,
@@ -1022,7 +1123,16 @@ export default {
             discount: this.purchase.discount?this.purchase.discount:0,
             shipping: this.purchase.shipping?this.purchase.shipping:0,
             GrandTotal: this.GrandTotal,
-            details: this.details
+            details: this.details,
+            station: this.purchase.station,
+            place_of_supply: this.purchase.place_of_supply,
+            e_way_bill_no: this.purchase.e_way_bill_no,
+            reverse_charge: this.purchase.reverse_charge,
+            vehicle_no: this.purchase.vehicle_no,
+            order_no: this.purchase.order_no,
+            gr_rr_no: this.purchase.gr_rr_no,
+            order_date: this.purchase.order_date,
+            transport: this.purchase.transport
           })
           .then(response => {
             // Complete the animation of theprogress bar.
